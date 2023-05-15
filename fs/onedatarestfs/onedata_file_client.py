@@ -4,28 +4,49 @@ from functools import lru_cache
 import requests
 import os
 from enum import Enum
+import logging
+import json
+
+def trace_requests_messages():
+    import http.client as http_client
+    http_client.HTTPConnection.debuglevel = 1
+
+    logging.basicConfig()
+    logging.getLogger().setLevel(logging.DEBUG)
+    requests_log = logging.getLogger("requests.packages.urllib3")
+    requests_log.setLevel(logging.DEBUG)
+    requests_log.propagate = True
 
 
-class FileType(Enum):
-    REG = 0
-    DIR = 1
-    LNK = 2
-
+#trace_requests_messages()
 
 class OnedataRESTError(Exception):
 
     def __init__(self, response):
         self.http_code = response.status_code
-        self.error = None
+        self.error_category = None
+        self.error_details = None
         self.description = None
 
-        #print(f"ERROR: {response.status_code} - {response.json()}")
+
         try:
-            self.error = response.json()['error']
-            self.description = response.json()['description']
+            self.error_category = response.json()['error']['id']
+            self.error_details = response.json()['error']['details']
+            self.description = response.json()['error']['description']
         except:
             pass
 
+    def __repr__(self):
+        """Return unique representation of the OnedataRESTFS instance."""
+
+        return self.__str__()
+
+    def __str__(self):
+        """Return unique representation of the OnedataRESTFS instance."""
+
+        return "<onedataresterror '{} {}:{}'>".format(
+            self.http_code, self.error_category, self.description
+        )
 
 class OnedataFileClient:
     """
@@ -34,7 +55,7 @@ class OnedataFileClient:
     _session = None
     _onezone_host = None
     _token = None
-    _timeout = 30
+    _timeout = 5
 
     def __init__(self, onezone_host, token):
         self._onezone_host = onezone_host
@@ -48,8 +69,6 @@ class OnedataFileClient:
         return f'https://{self.get_provider_for_space(space_name)}/api/v3/oneprovider{path}'
 
     def send_request(self, method, url, data=None, headers={}):
-        #print(f"{method} {url}")
-
         headers['X-Auth-Token'] = self._token
         if not 'Content-type' in headers:
             headers['Content-type'] = 'application/json'
@@ -60,6 +79,7 @@ class OnedataFileClient:
         response = self._session.send(prepared, timeout=self._timeout, verify=False)
 
         if not response.ok:
+            print(f"ERROR: {method} {url} {data}")
             print(response.text)
             raise OnedataRESTError(response)
 
@@ -84,6 +104,7 @@ class OnedataFileClient:
         return None
 
     def get_file_id(self, space_name, file_path):
+        print(f'## RESOLVING FILE ID {space_name} / {file_path}')
         return self.send_request('POST',
                                  self.op_url(space_name, f'/lookup-file-id/{space_name}/{file_path}')).json()["fileId"]
 
@@ -95,7 +116,10 @@ class OnedataFileClient:
 
     def get_attributes(self, space_name, file_path=None, file_id=None):
         if file_id is None:
-            file_id = self.get_file_id(space_name, file_path)
+            if file_path is None:
+                file_id = self.get_space_id(space_name)
+            else:
+                file_id = self.get_file_id(space_name, file_path)
         return self.send_request('GET', self.op_url(space_name, f'/data/{file_id}')).json()
 
     def set_attributes(self, space_name, file_path, attributes):
@@ -127,20 +151,40 @@ class OnedataFileClient:
 
     def put_file_content(self, space_name, file_id, offset, data):
         headers = {'Content-type': 'application/octet-stream'}
-        self.send_request('PUT',
-                          self.op_url(space_name, f'/data/{file_id}/content?offset={offset}'),
-                          data=data, headers=headers)
+        path_url = f'/data/{file_id}/content'
+        if offset is not None:
+            path_url += f'?offset={offset}'
+        self.send_request('PUT', self.op_url(space_name, path_url), data=data, headers=headers)
 
-    def create_file(self, space_name, file_path):
+    def create_file(self, space_name, file_path, file_type='REG', create_parents=False):
         space_id = self.get_space_id(space_name)
+        url_path = f'/data/{space_id}/path/{file_path}?type={file_type}&create_parents={str(create_parents).lower()}'
         return self.send_request('PUT',
-                                 self.op_url(space_name, f'/data/{space_id}/path/{file_path}'), b'').json()['fileId']
+                                 self.op_url(space_name, url_path), b'').json()['fileId']
 
     def remove(self, space_name, file_path):
         space_id = self.get_space_id(space_name)
-        attr = self.get_file_attributes(space_name, file_path)
+        attr = self.get_attributes(space_name, file_path)
 
         self.send_request('DELETE', self.op_url(space_name, f'/data/{space_id}/path/{file_path}'))
+
+    def move(self, src_space_name, src_file_path, dst_space_name, dst_file_path):
+        # First create the target directory (this assumes that the src_file_path already exists)
+
+        #dst_dirname = os.path.dirname(dst_file_path)
+        #if dst_dirname != '' and dst_dirname != '/' and dst_dirname != '.':
+        #    dst_file_id = self.create_file(dst_space_name, dst_dirname, 'DIR')
+
+        headers = {"X-CDMI-Specification-Version": "1.1.1",
+                   "Content-type": "application/cdmi-object"}
+
+        url = f'https://{self.get_provider_for_space(dst_space_name)}/cdmi/{dst_space_name}/{dst_file_path}'
+
+        data = {'move': f'{src_space_name}/{src_file_path}'}
+
+        self.send_request('PUT', url, data=json.dumps(data), headers=headers)
+
+
 
 
 
