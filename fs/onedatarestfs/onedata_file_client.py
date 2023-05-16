@@ -70,6 +70,7 @@ class OnedataFileClient:
         self._onezone_host = onezone_host
         self._token = token
         self._session = requests.Session()
+        self._session.headers.update({'X-Auth-Token': self._token})
 
     def oz_url(self, path: str) -> str:
         """Generate Onezone URL for specific path."""
@@ -81,7 +82,6 @@ class OnedataFileClient:
 
     def send_request(self, method: str, url: str, data: Any = None, headers: dict[str, str] = {}) -> requests.Response:
         # print(f">> {method} {url} {headers}")
-        headers['X-Auth-Token'] = self._token
         if not 'Content-type' in headers:
             headers['Content-type'] = 'application/json'
 
@@ -117,10 +117,16 @@ class OnedataFileClient:
 
         return None
 
-    def get_file_id(self, space_name: str, file_path: str) -> str:
-        print(f'## RESOLVING FILE ID: {space_name} / {file_path}')
-        return self.send_request('POST',
-                                 self.op_url(space_name, f'/lookup-file-id/{space_name}/{file_path}')).json()["fileId"]
+    def get_file_id(self, space_name: str, file_path: str, retries: int = 3) -> str:
+        # print(f'## RESOLVING FILE ID: {space_name} / {file_path}')
+        try:
+            return self.send_request('POST',
+                                     self.op_url(space_name,
+                                                 f'/lookup-file-id/{space_name}/{file_path}')).json()["fileId"]
+        except requests.exceptions.ReadTimeout as e:
+            if retries > 0:
+                return self.get_file_id(space_name, file_path, retries - 1)
+            raise e
 
     @lru_cache
     def get_provider_for_space(self, space_name: str) -> str:

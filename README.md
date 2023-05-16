@@ -3,7 +3,7 @@
 OnedataRESTFS is a [PyFilesystem](https://www.pyfilesystem.org/) interface to
 [Onedata](https://onedata.org) virtual file system based on [Onedata REST API].
 
-As a PyFilesystem concrete class, [OnedataFS](https://github.com/onedata/onedatarestfs/)
+As a PyFilesystem concrete class, [OnedataRESTFS](https://github.com/onedata/onedatarestfs/)
 allows you to work with Onedata in the same way as any other supported filesystem.
 
 ## Installing
@@ -16,13 +16,13 @@ pip install onedatarestfs
 
 ## Opening a OnedataRESTFS
 
-Open an OnedataFS by explicitly using the constructor:
+Open an OnedataRESTFS by explicitly using the constructor:
 
 ```python
 from fs.onedatarestfs import OnedataRESTFS
 onedata_onezone_host = "..."
 onedata_access_token = "..."
-odfs = OnedataFS(onedata_onezone_host, onedata_access_token)
+odfs = OnedataRESTFS(onedata_onezone_host, onedata_access_token)
 ```
 
 Or with a FS URL:
@@ -31,11 +31,6 @@ Or with a FS URL:
   from fs import open_fs
   odfs = open_fs('onedatarestfs://HOST?token=...')
 ```
-
-## Extended attributes
-
-OnedataRESTFS supports in addition to standard PyFilesystem API operations
-on metadata via POSIX compatible extended attributes API.
 
 
 ## Building and running tests
@@ -51,7 +46,7 @@ pip install coverage tox
 tox -c tox.ini -e flake8
 
 # Run mypy typing check
-tox -c tox.ini -e fstest
+tox -c tox.ini -e mypy
 
 # Run PyFilesystem test suite
 tox -c tox.ini -e fstest
