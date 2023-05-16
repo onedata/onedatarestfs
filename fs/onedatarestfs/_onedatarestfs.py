@@ -90,11 +90,10 @@ class OnedataRESTFile(io.RawIOBase):
         assert(self._space_name is not None)
 
         if mode.appending:
-            self.pos = self._odfs._client.get_attributes(space_name, file_id=self._file_id)['size']
+            self.pos = self.client().get_attributes(space_name, file_id=self._file_id)['size']
 
-
-    def close(self):
-        pass
+    def client(self):
+        return self._odfs.client()
 
     def tell(self):
         return self.pos
@@ -109,7 +108,7 @@ class OnedataRESTFile(io.RawIOBase):
         if size == 0:
             return b''
 
-        file_size = self._odfs._client.get_attributes(self._space_name, file_id=self._file_id)['size']
+        file_size = self.client().get_attributes(self._space_name, file_id=self._file_id)['size']
 
         if size < 0:
             size = file_size
@@ -120,7 +119,7 @@ class OnedataRESTFile(io.RawIOBase):
             return b''
 
         try:
-            data = self._odfs._client.get_file_content(self._space_name, self.pos,
+            data = self.client().get_file_content(self._space_name, self.pos,
                                                        available_size, file_id=self._file_id)
             self.pos += len(data)
 
@@ -190,9 +189,13 @@ class OnedataRESTFile(io.RawIOBase):
         if not self.mode.writing:
             raise IOError("File not open for writing")
 
-        self._odfs._client.put_file_content(self._space_name, self._file_id, self.pos, data)
+        self.client().put_file_content(self._space_name, self._file_id, self.pos, data)
 
-        self.pos += len(data)
+        size = len(data)
+
+        self.pos += size
+
+        return size
 
     def writelines(self, lines):
         """
@@ -221,23 +224,21 @@ class OnedataRESTFile(io.RawIOBase):
             size = self.pos
 
         if size == 0:
-            self._odfs._client.put_file_content(self._space_name, self._file_id, None, b'')
+            self.client().put_file_content(self._space_name, self._file_id, None, b'')
             self.pos = 0
-            return
+            return 0
 
-        file_size = self._odfs._client.get_attributes(self._space_name, file_id=self._file_id)['size']
+        file_size = self.client().get_attributes(self._space_name, file_id=self._file_id)['size']
 
         if size < file_size:
             self.pos = 0
-            self._odfs._client.put_file_content(self._space_name, self._file_id, None, self.read(size))
+            self.client().put_file_content(self._space_name, self._file_id, None, self.read(size))
             self.pos = size
-        else:
-            # Append file size with zeros up to size
-            self._odfs._client.put_file_content(self._space_name, self._file_id, file_size, b'\0' * (size - file_size))
+            return size
 
-
-
-        pass
+        # Append file size with zeros up to size
+        self.client().put_file_content(self._space_name, self._file_id, file_size, b'\0' * (size - file_size))
+        return size
 
     def seekable(self):
         """Return `True` if the file is seekable."""
@@ -270,7 +271,7 @@ class OnedataRESTFile(io.RawIOBase):
         if _whence == Seek.current:
             self.pos = self.pos + _pos
         if _whence == Seek.end:
-            size = self._odfs._client.get_attributes(self._space_name, file_id=self._file_id)['size']
+            size = self.client().get_attributes(self._space_name, file_id=self._file_id)['size']
             self.pos = size + _pos
 
         return self.tell()
@@ -338,11 +339,17 @@ class OnedataRESTFS(FS):
             self._onezone_host, self._space
         )
 
+    def client(self):
+        return self._client
+
     def _is_space_relative(self):
         return self._space is not None
 
     def _split_space_path(self, path):
         rpath = fs.path.relpath(path)
+        if rpath.endswith('/'):
+            rpath = rpath.rstrip('/')
+
         if self._is_space_relative():
             return self._space, rpath
         else:
@@ -461,12 +468,14 @@ class OnedataRESTFS(FS):
             if not recreate:
                 raise DirectoryExists(path)
         else:
-            attr = self.getinfo(dirname(path))
+            mode = None
+            if permissions:
+                mode = permissions.mode
 
-            if not attr.is_dir:
-                raise DirectoryExpected(dirname(path))
-
-            self._client.create_file(space_name, dir_path, 'DIR')
+            try:
+                self._client.create_file(space_name, dir_path, 'DIR', create_parents=recreate, mode=mode)
+            except OnedataRESTError as e:
+                raise to_fserror(e, path)
 
         return self.opendir(path)
 
@@ -513,8 +522,13 @@ class OnedataRESTFS(FS):
     ):
         self.check()
 
+        Mode(mode).validate_bin()
+
         if mode == 'x':
             mode = 'rwx'
+
+        if 'b' not in mode:
+            mode = f'{mode}b'
 
         if self.exists(path) and self.getinfo(path).is_dir:
             raise FileExpected(path)
@@ -525,6 +539,9 @@ class OnedataRESTFS(FS):
 
         file_id = None
         try:
+            if 'x' in mode and self.exists(path):
+                raise FileExists(path)
+
             if ('w' in mode or 'a' in mode) and not self.exists(path):
                 if not self.exists(dirname(path)):
                     raise ResourceNotFound(dirname(path))
@@ -534,7 +551,7 @@ class OnedataRESTFS(FS):
             if file_id is None:
                 file_id = self._client.get_file_id(space_name, file_path)
         except OnedataRESTError as e:
-            raise to_fserror(e, path)
+            raise to_fserror(e, path, 'get_attributes')
 
         return OnedataRESTFile(self,
                 self._client.get_provider_for_space(space_name),
@@ -556,13 +573,21 @@ class OnedataRESTFS(FS):
     def removedir(self, path):
         self.check()
 
+        if path == '/' or path == '' or path == '.':
+            raise RemoveRootError(path)
+
         info = self.getinfo(path)
         if not info.is_dir:
-            raise FileExpected(path)
+            raise DirectoryExpected(path)
 
-        (space_name, file_path) = self._split_space_path(path)
+        (space_name, dir_path) = self._split_space_path(path)
 
-        file_id = self._client.remove(space_name, file_path)
+        res = self._client.readdir(space_name, dir_path, 2, None)
+
+        if 'children' in res and len(res['children']) > 0:
+            raise DirectoryNotEmpty(path)
+
+        file_id = self._client.remove(space_name, dir_path)
 
     def setinfo(self, path, info):
         self.check()

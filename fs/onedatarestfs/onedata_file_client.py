@@ -79,8 +79,8 @@ class OnedataFileClient:
         response = self._session.send(prepared, timeout=self._timeout, verify=False)
 
         if not response.ok:
-            print(f"ERROR: {method} {url} {data}")
-            print(response.text)
+            # print(f"ERROR: {method} {url} {data}")
+            # print(response.text)
             raise OnedataRESTError(response)
 
         return response
@@ -104,7 +104,6 @@ class OnedataFileClient:
         return None
 
     def get_file_id(self, space_name, file_path):
-        print(f'## RESOLVING FILE ID {space_name} / {file_path}')
         return self.send_request('POST',
                                  self.op_url(space_name, f'/lookup-file-id/{space_name}/{file_path}')).json()["fileId"]
 
@@ -156,9 +155,11 @@ class OnedataFileClient:
             path_url += f'?offset={offset}'
         self.send_request('PUT', self.op_url(space_name, path_url), data=data, headers=headers)
 
-    def create_file(self, space_name, file_path, file_type='REG', create_parents=False):
+    def create_file(self, space_name, file_path, file_type='REG', create_parents=False, mode=None):
         space_id = self.get_space_id(space_name)
         url_path = f'/data/{space_id}/path/{file_path}?type={file_type}&create_parents={str(create_parents).lower()}'
+        if mode:
+            url_path += f'&mode={int(mode, 8)}'
         return self.send_request('PUT',
                                  self.op_url(space_name, url_path), b'').json()['fileId']
 
