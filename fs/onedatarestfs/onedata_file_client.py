@@ -1,3 +1,12 @@
+# coding: utf-8
+"""Onedata REST file API client."""
+
+__author__ = "Bartek Kryza"
+__copyright__ = "Copyright (C) 2023 Onedata"
+__license__ = (
+    "This software is released under the MIT license cited in LICENSE.txt"
+)
+
 import random
 import requests
 import logging
@@ -71,6 +80,7 @@ class OnedataFileClient:
         return f'https://{self.get_provider_for_space(space_name)}/api/v3/oneprovider{path}'
 
     def send_request(self, method: str, url: str, data: Any = None, headers: dict[str, str] = {}) -> requests.Response:
+        # print(f">> {method} {url} {headers}")
         headers['X-Auth-Token'] = self._token
         if not 'Content-type' in headers:
             headers['Content-type'] = 'application/json'
@@ -81,9 +91,11 @@ class OnedataFileClient:
         response = self._session.send(prepared, timeout=self._timeout, verify=False)
 
         if not response.ok:
-            # print(f"ERROR: {method} {url} {data}")
+            # print(f"ERROR: {method} {url}")
             # print(response.text)
             raise OnedataRESTError(response)
+
+        #print(f'<< {response.content}')
 
         return response
 
@@ -106,6 +118,7 @@ class OnedataFileClient:
         return None
 
     def get_file_id(self, space_name: str, file_path: str) -> str:
+        print(f'## RESOLVING FILE ID: {space_name} / {file_path}')
         return self.send_request('POST',
                                  self.op_url(space_name, f'/lookup-file-id/{space_name}/{file_path}')).json()["fileId"]
 

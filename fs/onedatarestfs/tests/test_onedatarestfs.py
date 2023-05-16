@@ -1,14 +1,33 @@
+# coding: utf-8
+"""OnedataRESTFS PyFilesystem test case suite."""
+
+__author__ = "Bartek Kryza"
+__copyright__ = "Copyright (C) 2023 Onedata"
+__license__ = (
+    "This software is released under the MIT license cited in LICENSE.txt"
+)
+
 import unittest
 import sys
 from fs.test import FSTestCases
 
-sys.path.extend(['../..'])
+try:
+    from fs.onedatarestfs import OnedataRESTFS
+    from fs.onedatarestfs.onedata_file_client import OnedataFileClient
+except ModuleNotFoundError:
+    # This is necessary for running unit tests directly without installing
+    sys.path.extend(['../..'])
+    from onedatarestfs import OnedataRESTFS
+    from onedatarestfs.onedata_file_client import OnedataFileClient
+except ImportError:
+    # This is necessary for running unit tests directly without installing
+    sys.path.extend(['../..'])
+    from onedatarestfs import OnedataRESTFS
+    from onedatarestfs.onedata_file_client import OnedataFileClient
 
-from fs.onedatarestfs import OnedataRESTFS
-from fs.onedatarestfs.onedata_file_client import OnedataFileClient
-
-import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+if "pytest" in sys.modules:
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class TestOnedataRESTFS(FSTestCases, unittest.TestCase):

@@ -2,3 +2,4 @@ __pycache__
 .idea
 .coverage
 fs.onedatarestfs.egg-info/
+tmp
