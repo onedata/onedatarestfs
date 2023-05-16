@@ -51,6 +51,8 @@ def to_fserror(e: OnedataRESTError, msg: str = None, request: str = None):
             return fs.errors.PermissionDenied(msg)
         if e.error_details['errno'] == 'eperm':
             return fs.errors.PermissionDenied(msg)
+        if e.error_details['errno'] == 'einval':
+            return fs.errors.InvalidCharsInPath(msg)
         if e.error_details['errno'] == 'enotdir':
             if request == 'get_attributes':
                 return fs.errors.ResourceNotFound(msg)
