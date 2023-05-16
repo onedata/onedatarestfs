@@ -4,8 +4,8 @@ from fs.test import FSTestCases
 
 sys.path.extend(['../..'])
 
-from onedatarestfs import OnedataRESTFS
-from onedatarestfs.onedata_file_client import OnedataFileClient
+from fs.onedatarestfs import OnedataRESTFS
+from fs.onedatarestfs.onedata_file_client import OnedataFileClient
 
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
