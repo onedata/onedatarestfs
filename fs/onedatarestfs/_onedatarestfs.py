@@ -1,6 +1,8 @@
 # coding: utf-8
 """OnedataRESTFS PyFilesystem implementation."""
 
+from __future__ import annotations
+
 __author__ = "Bartek Kryza"
 __copyright__ = "Copyright (C) 2023 Onedata"
 __license__ = (
