@@ -164,7 +164,14 @@ class OnedataFileClient:
 
     def list_spaces(self) -> list[str]:
         spaces = self.list_spaces_ids()
-        return list(map(lambda s: self.get_space_details(s)['name'], spaces['spaces']))
+
+        def is_space_supported(s):
+            return 'providers' in s and s['providers']
+
+        spaces_details = map(lambda s: self.get_space_details(s)['name'], spaces['spaces'])
+        supported_spaces = filter(lambda space_details: is_space_supported(space_details), spaces_details)
+
+        return list(supported_spaces)
 
     def get_file_content(self, space_name: str, offset: int, size: int,
                          file_path: Optional[str] = None, file_id: Optional[str] = None):
