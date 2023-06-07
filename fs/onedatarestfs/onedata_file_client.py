@@ -166,10 +166,11 @@ class OnedataFileClient:
         spaces = self.list_spaces_ids()
 
         def is_space_supported(s):
-            return 'providers' in s and s['providers']
+            return ('providers' in s) and s['providers']
 
-        spaces_details = map(lambda s: self.get_space_details(s)['name'], spaces['spaces'])
-        supported_spaces = filter(lambda space_details: is_space_supported(space_details), spaces_details)
+        spaces_details = map(lambda s: self.get_space_details(s), spaces['spaces'])
+
+        supported_spaces = map(lambda s: s['name'], filter(is_space_supported, spaces_details))
 
         return list(supported_spaces)
 
