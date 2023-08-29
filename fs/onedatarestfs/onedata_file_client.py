@@ -83,7 +83,8 @@ class OnedataFileClient:
         return f'https://{self.get_provider_for_space(space_name)}/api/v3/oneprovider{path}'
 
     def send_request(self, method: str, url: str, data: Any = None, headers: dict[str, str] = {}) -> requests.Response:
-        # print(f">> {method} {url} {headers}")
+        logging.debug(f">> {method} {url} {headers}")
+
         if not 'Content-type' in headers:
             headers['Content-type'] = 'application/json'
 
@@ -93,34 +94,70 @@ class OnedataFileClient:
         response = self._session.send(prepared, timeout=self._timeout, verify=False)
 
         if not response.ok:
-            # print(f"ERROR: {method} {url}")
-            # print(response.text)
+            logging.debug(f"ERROR: {method} {url} '{response.text}'")
             raise OnedataRESTError(response)
 
-        #print(f'<< {response.content}')
+        logging.debug(f'<< {response.content}')
 
         return response
 
-    def get_space_details(self, space_id: str) -> Any:
-        return self.send_request('GET', self.oz_url(f'/user/effective_spaces/{space_id}')).json()
-
-    def get_provider_details(self, provider_id: str) -> Any:
-        return self.send_request('GET', self.oz_url(f'/providers/{provider_id}')).json()
+    def get_token_capabilities(self) -> dict[str, Any]:
+        caps = """
+        {
+            "spaces": {
+                "84af6570d3e133c7164e52594b368f22ch7d58": {
+                    "name": "test01",
+                    "supports": {
+                        "d8190b4632eccaeaf1f2128f267c4176che3cf": {
+                            "readonly": true
+                        }
+                    }
+                },
+                "03b1fdcdef49c3d013342c3a3ef9cbb8chfadd": {
+                    "name": "test02",
+                    "supports": {
+                        "d8190b4632eccaeaf1f2128f267c4176che3cf": {
+                            "readonly": true
+                        }
+                    }
+                }
+            },
+            "providers": {
+                "d8190b4632eccaeaf1f2128f267c4176che3cf": {
+                    "domain": "dev-oneprovider-krakow.default.svc.cluster.local",
+                    "version": "23.02.1",
+                    "online": true
+                }
+            }
+        }
+        """
+        return json.loads(caps)
 
     @lru_cache
     def get_space_id(self, space_name: str) -> Optional[str]:
-        spaces = self.list_spaces_ids()['spaces']
+        caps = self.get_token_capabilities()
+
+        spaces = caps['spaces']
 
         for space_id in spaces:
-            space_details = self.get_space_details(space_id)
+            if spaces[space_id]['name'] == space_name:
+                return space_id
 
-            if space_details['name'] == space_name:
+        return None
+
+    @lru_cache
+    def get_space_id(self, space_name: str) -> Optional[str]:
+        caps = self.get_token_capabilities()
+
+        spaces = caps['spaces']
+
+        for space_id in spaces:
+            if spaces[space_id]['name'] == space_name:
                 return space_id
 
         return None
 
     def get_file_id(self, space_name: str, file_path: str, retries: int = 3) -> str:
-        # print(f'## RESOLVING FILE ID: {space_name} / {file_path}')
         try:
             return self.send_request('POST',
                                      self.op_url(space_name,
@@ -132,9 +169,11 @@ class OnedataFileClient:
 
     @lru_cache
     def get_provider_for_space(self, space_name: str) -> str:
-        provider_ids = self.get_space_details(self.get_space_id(space_name))['providers']
+        space_id = self.get_space_id(space_name)
+        caps = self.get_token_capabilities()
+        provider_ids = caps['spaces'][space_id]['supports']
         provider_id = random.choice(list(provider_ids.keys()))
-        return self.get_provider_details(provider_id)['domain']
+        return caps['providers'][provider_id]['domain']
 
     def get_attributes(self, space_name: str, file_path: Optional[str] = None, file_id: Optional[str] = None):
         if file_id is None:
@@ -159,20 +198,19 @@ class OnedataFileClient:
         return self.send_request('GET',
             self.op_url(space_name, f'/data/{dir_id}/children?attribute=size&attribute=name&attribute=type')).json()
 
-    def list_spaces_ids(self) -> Any:
-        return self.send_request('GET', self.oz_url('/user/effective_spaces')).json()
-
     def list_spaces(self) -> list[str]:
-        spaces = self.list_spaces_ids()
+        caps = self.get_token_capabilities()
 
         def is_space_supported(s):
-            return ('providers' in s) and s['providers']
+            return ('supports' in s) and s['supports']
 
-        spaces_details = map(lambda s: self.get_space_details(s), spaces['spaces'])
+        supported_spaces = []
+        for space_id in caps['spaces']:
+            space = caps['spaces'][space_id]
+            if is_space_supported(space):
+                supported_spaces.append(space['name'])
 
-        supported_spaces = map(lambda s: s['name'], filter(is_space_supported, spaces_details))
-
-        return list(supported_spaces)
+        return supported_spaces
 
     def get_file_content(self, space_name: str, offset: int, size: int,
                          file_path: Optional[str] = None, file_id: Optional[str] = None):
