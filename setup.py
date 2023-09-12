@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-"""OnedataRESTFS is a PyFilesystem implementation for Onedata filesystem using REST API."""
+"""OnedataRESTFS is a PyFilesystem implementation for Onedata."""
 
 from setuptools import setup
 
-__version__ = '21.02.1'
+__version__ = '21.02.4.rc1'
 
 CLASSIFIERS = [
     "Development Status :: 4 - Beta",
@@ -23,7 +23,7 @@ CLASSIFIERS = [
 with open("README.md", "rt") as f:
     DESCRIPTION = f.read()
 
-REQUIREMENTS = ["fs", "requests"]
+REQUIREMENTS = ["fs", "onedatafilerestclient"]
 
 setup(
     name="fs.onedatarestfs",
@@ -36,11 +36,11 @@ setup(
     long_description=DESCRIPTION,
     packages=["fs.onedatarestfs"],
     keywords=["pyfilesystem", "Onedata"],
-    #platforms=["linux"],
     test_suite="nose.collector",
     url="https://github.com/onedata/onedatarestfs",
     version=__version__,
     entry_points={
-        "fs.opener": ["onedatarestfs = fs.onedatarestfs.opener:OnedataRESTFSOpener"]
+        "fs.opener":
+        ["onedatarestfs = fs.onedatarestfs.opener:OnedataRESTFSOpener"]
     },
 )

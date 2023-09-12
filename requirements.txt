@@ -1,1 +1,2 @@
-requests
+fs
+onedatafilerestclient==21.02.4.rc1

@@ -6,21 +6,20 @@ from __future__ import annotations
 __author__ = "Bartek Kryza"
 __copyright__ = "Copyright (C) 2023 Onedata"
 __license__ = (
-    "This software is released under the MIT license cited in LICENSE.txt"
-)
+    "This software is released under the MIT license cited in LICENSE.txt")
 
 __all__ = ["OnedataRESTFS"]
 
 import io
-import fs.errors
+from typing import (Any, Collection, Mapping, Optional, Sized, Text,
+                    Tuple, cast)
 
-from typing import Any, BinaryIO, Iterable, Optional, SupportsInt, Text, Collection, Mapping, Tuple
+import fs.errors
 from fs.base import FS
-from fs.constants import DEFAULT_CHUNK_SIZE
 from fs.enums import ResourceType, Seek
-from fs.errors import DirectoryExists, DirectoryExpected, DirectoryNotEmpty, DestinationExists
-from fs.errors import FileExists, FileExpected
-from fs.errors import RemoveRootError, ResourceInvalid, ResourceNotFound
+from fs.errors import (DestinationExists, DirectoryExists, DirectoryExpected,
+                       DirectoryNotEmpty, FileExists, FileExpected,
+                       RemoveRootError, ResourceInvalid, ResourceNotFound)
 from fs.info import Info
 from fs.iotools import line_iterator
 from fs.mode import Mode
@@ -28,40 +27,12 @@ from fs.path import basename, dirname
 from fs.permissions import Permissions
 from fs.subfs import SubFS
 
-from .onedata_file_client import OnedataFileClient, OnedataRESTError
+from onedatafilerestclient import OnedataFileRESTClient  # type: ignore
+from onedatafilerestclient import OnedataRESTError  # type: ignore
 
+from .errors import to_fserror
 
 __all__ = ["OnedataRESTFS"]
-
-
-def to_fserror(e: OnedataRESTError, msg: str = None, request: str = None):
-    if msg is None:
-        msg = e.description
-
-    if e.http_code == 404:
-        return fs.errors.ResourceNotFound(msg)
-
-    if e.http_code == 416:
-        return fs.errors.FSError("Invalid range")
-
-    if e.error_category and e.error_category == 'posix':
-        if e.error_details['errno'] == 'enoent':
-            return fs.errors.ResourceNotFound(msg)
-        if e.error_details['errno'] == 'eexist':
-            return fs.errors.FileExists(msg)
-        if e.error_details['errno'] == 'eaccess':
-            return fs.errors.PermissionDenied(msg)
-        if e.error_details['errno'] == 'eperm':
-            return fs.errors.PermissionDenied(msg)
-        if e.error_details['errno'] == 'einval':
-            return fs.errors.InvalidCharsInPath(msg)
-        if e.error_details['errno'] == 'enotdir':
-            if request == 'get_attributes':
-                return fs.errors.ResourceNotFound(msg)
-            return fs.errors.DirectoryExpected(msg)
-
-    if e.error_category and e.error_category == 'badValueFilePath':
-        return fs.errors.InvalidCharsInPath(msg)
 
 
 class OnedataRESTFile(io.RawIOBase):
@@ -69,21 +40,16 @@ class OnedataRESTFile(io.RawIOBase):
 
     These objects provide file handle interface to PyFilesystem.
     """
-    _file_id: str = None
-    _space_name: str = None
-    _oneprovider_host: str = None
-    _odfs: Any = None
+    _file_id: str
+    _space_name: Optional[str] = None
+    _oneprovider_host: str
+    _odfs: Any
     pos: int = 0
-    mode: str = None
+    mode: fs.mode.Mode
 
-    def __init__(
-        self,
-        odfs: Any,
-        oneprovider_host: str,
-        space_name: str,
-        file_id: str,
-        mode: str
-    ):
+    def __init__(self, odfs: Any, oneprovider_host: str, space_name: str,
+                 file_id: str, mode: fs.mode.Mode):
+        """Create instace of OnedataRESTFile handle."""
         super(OnedataRESTFile, self).__init__()
         self._odfs = odfs
         self._oneprovider_host = oneprovider_host
@@ -91,29 +57,34 @@ class OnedataRESTFile(io.RawIOBase):
         self._space_name = space_name
         self.mode = mode
 
-        assert(self._space_name is not None)
+        assert (self._space_name is not None)
 
-        if mode.appending:
-            self.pos = self.client().get_attributes(space_name, file_id=self._file_id)['size']
+        if self.mode.appending:
+            self.pos = self.client().get_attributes(
+                space_name, file_id=self._file_id)['size']
 
-    def client(self) -> OnedataFileClient:
-        """Return a reference to the OnedataFileClient instance"""
+    def client(self) -> OnedataFileRESTClient:
+        """Return a reference to the OnedataFileClient instance."""
         return self._odfs.client()
 
     def tell(self) -> int:
+        """Get current file offset."""
         return self.pos
 
     def readable(self) -> bool:
+        """Check whether the file is readable."""
         return self.mode.reading
 
     def read(self, size: int = -1) -> bytes:
+        """Read 'size' bytes from file at current offset."""
         if not self.mode.reading:
             raise IOError("File not open for reading")
 
         if size == 0:
             return b''
 
-        file_size = self.client().get_attributes(self._space_name, file_id=self._file_id)['size']
+        file_size = self.client().get_attributes(self._space_name,
+                                                 file_id=self._file_id)['size']
 
         if size < 0:
             size = file_size
@@ -124,15 +95,17 @@ class OnedataRESTFile(io.RawIOBase):
             return b''
 
         try:
-            data = self.client().get_file_content(self._space_name, self.pos,
-                                                       available_size, file_id=self._file_id)
+            data = self.client().get_file_content(self._space_name,
+                                                  self.pos,
+                                                  available_size,
+                                                  file_id=self._file_id)
             self.pos += len(data)
 
-            return data
+            return cast(bytes, data)
         except OnedataRESTError as e:
             raise to_fserror(e, self._file_id)
 
-    def readinto(self, buf):
+    def readinto(self, buf: bytearray) -> int:  # type: ignore
         """
         Read from the file into the buffer.
 
@@ -141,14 +114,13 @@ class OnedataRESTFile(io.RawIOBase):
 
         :param bytearray buf: Buffer where the read data will be stored.
         """
-
-        data = self.read(len(buf))
+        data = self.read(len(cast(Sized, buf)))
         bytes_read = len(data)
         buf[:len(data)] = data
 
         return bytes_read
 
-    def readline(self, size: int = -1):
+    def readline(self, size: Optional[int] = -1) -> bytes:
         """
         Read a single line from file.
 
@@ -159,10 +131,11 @@ class OnedataRESTFile(io.RawIOBase):
 
         :param int size: Number of bytes to read from the current line.
         """
+        if not size:
+            size = -1
+        return cast(bytes, next(line_iterator(self, size)))  # type: ignore
 
-        return next(line_iterator(self, size))  # type: ignore
-
-    def readlines(self, hint: int = -1):
+    def readlines(self, hint: int = -1) -> list[bytes]:
         """
         Read `hint` lines from the file starting from current position.
 
@@ -170,7 +143,6 @@ class OnedataRESTFile(io.RawIOBase):
 
         :param int hint: Number of lines to read.
         """
-
         lines = []
         size = 0
         for line in line_iterator(self):  # type: ignore
@@ -180,29 +152,29 @@ class OnedataRESTFile(io.RawIOBase):
                 break
         return lines
 
-    def writable(self):
+    def writable(self) -> bool:
         """Return True if the file was opened for writing."""
         return self.mode.writing
 
-    def write(self, data):
+    def write(self, data: bytearray) -> Optional[int]:  # type: ignore
         """
         Write `data` to file starting from current position in the file.
 
         :param bytes data: Data to write to the file
         """
-
         if not self.mode.writing:
             raise IOError("File not open for writing")
 
-        self.client().put_file_content(self._space_name, self._file_id, self.pos, data)
+        self.client().put_file_content(self._space_name, self._file_id,
+                                       self.pos, data)
 
-        size = len(data)
+        size = len(cast(Sized, data))
 
         self.pos += size
 
         return size
 
-    def writelines(self, lines: list[str]):
+    def writelines(self, lines: list[bytes]) -> None:  # type: ignore
         """
         Write `lines` to file starting at the current position in the file.
 
@@ -211,8 +183,7 @@ class OnedataRESTFile(io.RawIOBase):
 
         :param list lines: Lines to write to the file
         """
-
-        self.write(b''.join(lines))
+        self.write(b''.join(lines))  # type: ignore
 
     def truncate(self, size: Optional[int] = None) -> int:
         """
@@ -224,32 +195,35 @@ class OnedataRESTFile(io.RawIOBase):
 
         :param int size: The new size of the file
         """
-
         if size is None:
             size = self.pos
 
         if size == 0:
-            self.client().put_file_content(self._space_name, self._file_id, None, b'')
+            self.client().put_file_content(self._space_name, self._file_id,
+                                           None, b'')
             self.pos = 0
             return 0
 
-        file_size = self.client().get_attributes(self._space_name, file_id=self._file_id)['size']
+        file_size = self.client().get_attributes(self._space_name,
+                                                 file_id=self._file_id)['size']
 
         if size < file_size:
             self.pos = 0
-            self.client().put_file_content(self._space_name, self._file_id, None, self.read(size))
+            self.client().put_file_content(self._space_name, self._file_id,
+                                           None, self.read(size))
             self.pos = size
             return size
 
         # Append file size with zeros up to size
-        self.client().put_file_content(self._space_name, self._file_id, file_size, b'\0' * (size - file_size))
+        self.client().put_file_content(self._space_name, self._file_id,
+                                       file_size, b'\0' * (size - file_size))
         return size
 
     def seekable(self) -> bool:
         """Return `True` if the file is seekable."""
         return True
 
-    def seek(self, pos: int, whence: Seek = Seek.set) -> int:
+    def seek(self, pos: int, whence: Seek = Seek.set) -> int:  # type: ignore
         """
         Change current position in an opened file.
 
@@ -258,7 +232,6 @@ class OnedataRESTFile(io.RawIOBase):
 
         :param int pos: New position in the file.
         """
-
         _whence = int(whence)
         _pos = int(pos)
         if _whence not in (Seek.set, Seek.current, Seek.end):
@@ -276,15 +249,15 @@ class OnedataRESTFile(io.RawIOBase):
         if _whence == Seek.current:
             self.pos = self.pos + _pos
         if _whence == Seek.end:
-            size = self.client().get_attributes(self._space_name, file_id=self._file_id)['size']
+            size = self.client().get_attributes(self._space_name,
+                                                file_id=self._file_id)['size']
             self.pos = size + _pos
 
         return self.tell()
 
 
 class OnedataRESTFS(FS):
-    """
-    Implementation of Onedata virtual filesystem for PyFilesystem based on REST API.
+    """Implementation of Onedata virtual filesystem for PyFilesystem.
 
     Implementation of `Onedata <https://onedata.org>` filesystem for
     `PyFilesystem <https://pyfilesystem.org>`.
@@ -300,14 +273,13 @@ class OnedataRESTFS(FS):
         "virtual": False,
     }
 
-    def __init__(
-        self,
-        onezone_host: str,
-        token: str,
-        space: Optional[str] = None,
-        insecure: bool = False,
-        timeout: int = 5
-    ):
+    def __init__(self,
+                 onezone_host: str,
+                 token: str,
+                 space: Optional[str] = None,
+                 preferred_oneproviders: Optional[list[str]] = [],
+                 insecure: bool = False,
+                 timeout: int = 30):
         """
         Onedata client OnedataRESTFS constructor.
 
@@ -316,40 +288,42 @@ class OnedataRESTFS(FS):
         is referenced in the code. To close the connection call `close()`
         directly or use context manager.
 
-        :param str host: The Onedata Oneprovider host name
+        :param str onezone_host: The Onedata Onezone host name
         :param str token: The Onedata user access token
-        :param int port: The Onedata Oneprovider port
-        :param list space: The list of space names which should be opened.
-                           By default, all spaces are opened.
+        :param str space: The Onedata space to be access, if none all available
+                          spaces for given token will be visible
+        :param [str] preferred_oneproviders: Optional list of preferred
+                                             Oneproviders to handle requests
+        :param bool insecure: If True, disable SSL verification.
+        :param int timeout: Timeout on REST requests.
         """
-
         self._onezone_host = onezone_host
         self._token = token
         self._space = space
         self._timeout = timeout
+        self._preferred_oneproviders = preferred_oneproviders
         self._insecure = insecure
-        self._client = OnedataFileClient(self._onezone_host, self._token)
+        self._client = OnedataFileRESTClient(self._onezone_host, self._token,
+                                             self._preferred_oneproviders)
 
         super(OnedataRESTFS, self).__init__()
 
     def __repr__(self) -> str:
         """Return unique representation of the OnedataRESTFS instance."""
-
         return self.__str__()
 
     def __str__(self) -> str:
         """Return unique representation of the OnedataRESTFS instance."""
+        return "<onedatarestfs '{}:{}...:{}:{}'>".format(
+            self._onezone_host, self._token[:24], self._space,
+            self._preferred_oneproviders)
 
-        return "<onedatarestfs '{}:{}'>".format(
-            self._onezone_host, self._space
-        )
-
-    def client(self) -> OnedataFileClient:
+    def client(self) -> OnedataFileRESTClient:
         """Return a reference to OnedataFileClient."""
         return self._client
 
     def _is_space_relative(self) -> bool:
-        """Is this OnedataRESTFS instance relative to a specific space?"""
+        """Is this OnedataRESTFS instance relative to a specific space."""
         return self._space is not None
 
     def _split_space_path(self, path: str) -> Tuple[str, Optional[str]]:
@@ -358,26 +332,29 @@ class OnedataRESTFS(FS):
         Returns a pair (space_name, file_path) where space_name is the name
         of the space and file_path is a relative path in the space.
 
-        If OnedataRESTFS has been created for a specific space, that space is used
-        regardless of the ``path`` contents, and the ``path`` is assumed to be
-        already relative to the space.
+        If OnedataRESTFS has been created for a specific space, that space is
+        used regardless of the ``path`` contents, and the ``path`` is assumed
+        to be already relative to the space.
         """
         rpath = fs.path.relpath(path)
         if rpath.endswith('/'):
             rpath = rpath.rstrip('/')
 
         if self._is_space_relative():
+            assert self._space is not None
             return self._space, rpath
         else:
             path_tokens = list(filter(str.strip, rpath.split('/')))
             if len(path_tokens) == 0:
-                raise ResourceInvalid
+                raise ResourceInvalid(path)
             elif len(path_tokens) == 1:
                 return path_tokens[0], None
 
             return str(path_tokens[0]), '/'.join(path_tokens[1:])
 
-    def getinfo(self, path: str, namespaces: Optional[Collection[Text]] = None) -> Info:
+    def getinfo(self,
+                path: str,
+                namespaces: Optional[Collection[Text]] = None) -> Info:
         """Get information about a resource on a filesystem.
 
         Arguments:
@@ -393,7 +370,6 @@ class OnedataRESTFS(FS):
             fs.errors.ResourceNotFound: If ``path`` does not exist.
 
         For more information regarding resource information, see :ref:`info`.
-
         """
         self.check()
 
@@ -464,7 +440,7 @@ class OnedataRESTFS(FS):
         try:
             if not self._is_space_relative() and (path == '' or path == '/'):
                 # list spaces
-                return self._client.list_spaces()
+                return cast(list[str], self._client.list_spaces())
 
             if not self.getinfo(path).is_dir:
                 raise DirectoryExpected(path)
@@ -477,7 +453,8 @@ class OnedataRESTFS(FS):
             continuation_token = None
 
             while True:
-                res = self._client.readdir(space_name, dir_path, limit, continuation_token)
+                res = self._client.readdir(space_name, dir_path, limit,
+                                           continuation_token)
 
                 for child in res['children']:
                     result.append(child['name'])
@@ -492,10 +469,10 @@ class OnedataRESTFS(FS):
             raise to_fserror(e, path)
 
     def makedir(
-            self,
-            path: str,
-            permissions: Optional[Permissions] = None,
-            recreate: bool = False,
+        self,
+        path: str,
+        permissions: Optional[Permissions] = None,
+        recreate: bool = False,
     ) -> SubFS[FS]:
         """Make a directory.
 
@@ -536,7 +513,11 @@ class OnedataRESTFS(FS):
                 mode = permissions.mode
 
             try:
-                self._client.create_file(space_name, dir_path, 'DIR', create_parents=recreate, mode=mode)
+                self._client.create_file(space_name,
+                                         dir_path,
+                                         'DIR',
+                                         create_parents=recreate,
+                                         mode=mode)
             except OnedataRESTError as e:
                 raise to_fserror(e, path)
 
@@ -578,13 +559,12 @@ class OnedataRESTFS(FS):
 
         return True
 
-    def openbin(
+    def openbin(  # type: ignore[override]
             self,
             path: str,
             mode: str = 'r',
             buffering: int = -1,
-            **options: Any
-    ) -> OnedataRESTFile:
+            **options: Any) -> OnedataRESTFile:
         """Open a binary file-like object.
 
         Arguments:
@@ -645,10 +625,8 @@ class OnedataRESTFS(FS):
             raise to_fserror(e, path, 'get_attributes')
 
         return OnedataRESTFile(self,
-                self._client.get_provider_for_space(space_name),
-                space_name,
-                file_id,
-                Mode(mode))
+                               self._client.get_provider_for_space(space_name),
+                               space_name, file_id, Mode(mode))
 
     def remove(self, path: str) -> None:
         """Remove a file from the filesystem.
@@ -672,7 +650,7 @@ class OnedataRESTFS(FS):
         if file_path is None:
             raise fs.errors.PermissionDenied
 
-        file_id = self._client.remove(space_name, file_path)
+        self._client.remove(space_name, file_path)
 
     def removedir(self, path: str) -> None:
         """Remove a directory from the filesystem.
@@ -711,9 +689,10 @@ class OnedataRESTFS(FS):
         if 'children' in res and len(res['children']) > 0:
             raise DirectoryNotEmpty(path)
 
-        file_id = self._client.remove(space_name, dir_path)
+        self._client.remove(space_name, dir_path)
 
-    def setinfo(self, path: str, info: Mapping[Text, Mapping[Text, object]]) -> None:
+    def setinfo(self, path: str, info: Mapping[Text, Mapping[Text,
+                                                             object]]) -> None:
         """Set info on a resource.
 
         This method is the complement to `~fs.base.FS.getinfo`
@@ -744,7 +723,8 @@ class OnedataRESTFS(FS):
 
         # Currently we only support mode setting
         if 'access' in info and 'permissions' in info['access']:
-            attributes = {'mode': f'0{str(Permissions(info["access"]["permissions"]).mode)}'}
+            perms = cast(str, info["access"]["permissions"])
+            attributes = {'mode': f'0{str(Permissions(perms).mode)}'}
             (space_name, file_path) = self._split_space_path(path)
 
             if file_path is None:
@@ -752,7 +732,11 @@ class OnedataRESTFS(FS):
 
             self._client.set_attributes(space_name, file_path, attributes)
 
-    def move(self, src_path: str, dst_path: str, overwrite: bool = False, preserve_time: bool = False) -> None:
+    def move(self,
+             src_path: str,
+             dst_path: str,
+             overwrite: bool = False,
+             preserve_time: bool = False) -> None:
         """Move a file from ``src_path`` to ``dst_path``.
 
         Arguments:
@@ -773,7 +757,6 @@ class OnedataRESTFS(FS):
                 ``dst_path`` does not exist.
 
         """
-
         self.check()
 
         if not self.exists(src_path) or not self.exists(dirname(dst_path)):
@@ -795,6 +778,7 @@ class OnedataRESTFS(FS):
             raise fs.errors.PermissionDenied
 
         if src_space_name != dst_space_name:
-            FS.move(src_path, dst_path)
+            super(OnedataRESTFS, self).move(src_path, dst_path)
 
-        self._client.move(src_space_name, src_file_path, dst_space_name, dst_file_path)
+        self._client.move(src_space_name, src_file_path, dst_space_name,
+                          dst_file_path)
