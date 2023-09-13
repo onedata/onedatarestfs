@@ -34,6 +34,7 @@ setup(
     install_requires=REQUIREMENTS,
     license="MIT",
     long_description=DESCRIPTION,
+    long_description_content_type='text/markdown',
     packages=["fs.onedatarestfs"],
     keywords=["pyfilesystem", "Onedata"],
     test_suite="nose.collector",
