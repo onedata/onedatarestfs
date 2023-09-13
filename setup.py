@@ -23,7 +23,7 @@ CLASSIFIERS = [
 with open("README.md", "rt") as f:
     DESCRIPTION = f.read()
 
-REQUIREMENTS = ["fs", "onedatafilerestclient"]
+REQUIREMENTS = ['fs', f'onedatafilerestclient=={__version__}']
 
 setup(
     name="fs.onedatarestfs",
