@@ -1,7 +1,7 @@
 # OnedataRESTFS
 
 [![Build status](https://github.com/onedata/onedatarestfs/actions/workflows/workflow.yml/badge.svg)](https://github.com/onedata/onedatarestfs/actions)
-[![Version](https://img.shields.io/pypi/pyversions/onedatarestfs.svg)](https://pypi.python.org/pypi/onedatarestfs)
+[![Version](https://img.shields.io/pypi/pyversions/onedatarestfs.svg)](https://pypi.python.org/pypi/fs.onedatarestfs)
 
 OnedataRESTFS is a [PyFilesystem](https://www.pyfilesystem.org/) interface to
 [Onedata](https://onedata.org) virtual file system based on [Onedata REST API](https://onedata.org/#/home/api/stable/oneprovider).
