@@ -11,7 +11,7 @@ __license__ = (
 __all__ = ["OnedataRESTFS"]
 
 import io
-from typing import (Any, Collection, Mapping, Optional, Sized, Text,
+from typing import (Any, Collection, List, Mapping, Optional, Sized, Text,
                     Tuple, cast)
 
 import fs.errors
@@ -440,7 +440,7 @@ class OnedataRESTFS(FS):
         try:
             if not self._is_space_relative() and (path == '' or path == '/'):
                 # list spaces
-                return cast(list[str], self._client.list_spaces())
+                return cast(List[str], self._client.list_spaces())
 
             if not self.getinfo(path).is_dir:
                 raise DirectoryExpected(path)
