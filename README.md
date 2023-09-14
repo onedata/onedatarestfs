@@ -11,7 +11,7 @@ allows you to work with Onedata in the same way as any other supported filesyste
 You can install OnedataRESTFS from pip as follows:
 
 ```
-pip install onedatarestfs
+pip install fs.onedatarestfs
 ```
 
 ## Opening a OnedataRESTFS
