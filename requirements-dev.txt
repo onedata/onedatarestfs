@@ -1,0 +1,9 @@
+./onedatafilerestclient
+tox
+flake8
+yapf
+isort
+mypy
+pytest
+six
+pyyaml
