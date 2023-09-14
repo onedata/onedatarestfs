@@ -11,8 +11,8 @@ __license__ = (
 __all__ = ["OnedataRESTFS"]
 
 import io
-from typing import (Any, Collection, Mapping, Optional, Sized, Text,
-                    Tuple, cast)
+from typing import (Any, Collection, Mapping, Optional, Sized, Text, Tuple,
+                    cast)
 
 import fs.errors
 from fs.base import FS

@@ -10,6 +10,8 @@ import pytest
 import requests
 from urllib3.util import connection
 
+from onedatafilerestclient import OnedataFileRESTClient
+
 
 def trace_requests_messages() -> None:
     """Enable logging HTTP requests."""
@@ -47,12 +49,6 @@ def patched_create_connection(address, *args, **kwargs):
 
 
 connection.create_connection = patched_create_connection
-
-
-@pytest.fixture(scope="module", autouse=True)
-def wait_for_support_sync():
-    """Wait until providers are fully synchronized after setup."""
-    time.sleep(10)
 
 
 @pytest.fixture(scope=FIXTURE_SCOPE)
@@ -99,6 +95,36 @@ def onezone_admin_token(onezone_ip):
                         verify=False)
     os.environ['ONEZONE_ADMIN_TOKEN'] = res.json()["token"]
     return res.json()["token"]
+
+
+@pytest.fixture(scope="module", autouse=True)
+def wait_for_support_sync(onezone_ip, oneprovider_krakow_ip,
+                          oneprovider_paris_ip, onezone_admin_token):
+    """Wait until providers are fully synchronized after setup."""
+    print("INFO: Waiting for space support synchronization...")
+
+    retry_count = 60
+    krakow_client = OnedataFileRESTClient(onezone_ip, onezone_admin_token,
+                                          [oneprovider_krakow_ip])
+    paris_client = OnedataFileRESTClient(onezone_ip, onezone_admin_token,
+                                         [oneprovider_paris_ip])
+
+    while True:
+        try:
+            krakow_client.get_provider_for_space('test_onedatarestfs')
+            paris_client.get_provider_for_space('test_onedatarestfs')
+            time.sleep(1)
+        except:
+            if retry_count == 0:
+                raise RuntimeError('ERROR: Space support information for '
+                                   '"test_onedatarestfs" did not synchronize '
+                                   'properly')
+            retry_count -= 1
+            continue
+
+        break
+
+    print("INFO: Space 'test_onedatarestfs' support information synced")
 
 
 @pytest.fixture(scope=FIXTURE_SCOPE)
