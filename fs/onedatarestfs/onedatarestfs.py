@@ -11,8 +11,8 @@ __license__ = (
 __all__ = ["OnedataRESTFS"]
 
 import io
-from typing import (Any, Collection, Mapping, Optional, Sized, Text, Tuple,
-                    cast)
+from typing import (Any, Collection, List, Mapping, Optional, Sized, Text,
+                    Tuple, cast)
 
 import fs.errors
 from fs.base import FS
@@ -135,7 +135,7 @@ class OnedataRESTFile(io.RawIOBase):
             size = -1
         return cast(bytes, next(line_iterator(self, size)))  # type: ignore
 
-    def readlines(self, hint: int = -1) -> list[bytes]:
+    def readlines(self, hint: int = -1) -> List[bytes]:
         """
         Read `hint` lines from the file starting from current position.
 
@@ -174,7 +174,7 @@ class OnedataRESTFile(io.RawIOBase):
 
         return size
 
-    def writelines(self, lines: list[bytes]) -> None:  # type: ignore
+    def writelines(self, lines: List[bytes]) -> None:  # type: ignore
         """
         Write `lines` to file starting at the current position in the file.
 
@@ -277,7 +277,7 @@ class OnedataRESTFS(FS):
                  onezone_host: str,
                  token: str,
                  space: Optional[str] = None,
-                 preferred_oneproviders: Optional[list[str]] = [],
+                 preferred_oneproviders: Optional[List[str]] = [],
                  verify_ssl: bool = True,
                  timeout: int = 30):
         """
@@ -302,7 +302,8 @@ class OnedataRESTFS(FS):
         self._space = space
         self._timeout = timeout
         self._preferred_oneproviders = preferred_oneproviders
-        self._client = OnedataFileRESTClient(self._onezone_host, self._token,
+        self._client = OnedataFileRESTClient(self._onezone_host,
+                                             self._token,
                                              self._preferred_oneproviders,
                                              verify_ssl=verify_ssl)
 
@@ -417,7 +418,7 @@ class OnedataRESTFS(FS):
 
         return Info(info)
 
-    def listdir(self, path: str) -> list[str]:
+    def listdir(self, path: str) -> List[str]:
         """Get a list of the resource names in a directory.
 
         This method will return a list of the resources in a directory.
@@ -440,7 +441,7 @@ class OnedataRESTFS(FS):
         try:
             if not self._is_space_relative() and (path == '' or path == '/'):
                 # list spaces
-                return cast(list[str], self._client.list_spaces())
+                return cast(List[str], self._client.list_spaces())
 
             if not self.getinfo(path).is_dir:
                 raise DirectoryExpected(path)
