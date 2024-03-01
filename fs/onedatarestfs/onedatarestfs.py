@@ -278,7 +278,7 @@ class OnedataRESTFS(FS):
                  token: str,
                  space: Optional[str] = None,
                  preferred_oneproviders: Optional[list[str]] = [],
-                 insecure: bool = False,
+                 verify_ssl: bool = True,
                  timeout: int = 30):
         """
         Onedata client OnedataRESTFS constructor.
@@ -294,7 +294,7 @@ class OnedataRESTFS(FS):
                           spaces for given token will be visible
         :param [str] preferred_oneproviders: Optional list of preferred
                                              Oneproviders to handle requests
-        :param bool insecure: If True, disable SSL verification.
+        :param bool verify_ssl: If False, disable SSL verification.
         :param int timeout: Timeout on REST requests.
         """
         self._onezone_host = onezone_host
@@ -302,9 +302,9 @@ class OnedataRESTFS(FS):
         self._space = space
         self._timeout = timeout
         self._preferred_oneproviders = preferred_oneproviders
-        self._insecure = insecure
         self._client = OnedataFileRESTClient(self._onezone_host, self._token,
-                                             self._preferred_oneproviders)
+                                             self._preferred_oneproviders,
+                                             verify_ssl=verify_ssl)
 
         super(OnedataRESTFS, self).__init__()
 
