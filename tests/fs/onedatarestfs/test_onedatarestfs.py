@@ -40,7 +40,9 @@ class TestOnedataRESTFS(FSTestCases, unittest.TestCase):
         ]
         restfs = OnedataRESTFS(os.getenv('ONEZONE_IP'),
                                os.getenv('ONEZONE_ADMIN_TOKEN'),
-                               self.space_name, preferred_providers)
+                               self.space_name,
+                               preferred_providers,
+                               verify_ssl=False)
         self._client = restfs.client()
         self._delete_contents()
         return restfs

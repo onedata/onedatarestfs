@@ -104,10 +104,14 @@ def wait_for_support_sync(onezone_ip, oneprovider_krakow_ip,
     print("INFO: Waiting for space support synchronization...")
 
     retry_count = 60
-    krakow_client = OnedataFileRESTClient(onezone_ip, onezone_admin_token,
-                                          [oneprovider_krakow_ip])
-    paris_client = OnedataFileRESTClient(onezone_ip, onezone_admin_token,
-                                         [oneprovider_paris_ip])
+    krakow_client = OnedataFileRESTClient(onezone_ip,
+                                          onezone_admin_token,
+                                          [oneprovider_krakow_ip],
+                                          verify_ssl=False)
+    paris_client = OnedataFileRESTClient(onezone_ip,
+                                         onezone_admin_token,
+                                         [oneprovider_paris_ip],
+                                         verify_ssl=False)
 
     while True:
         try:
