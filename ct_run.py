@@ -94,7 +94,7 @@ if args.onenv_config is not None:
             subprocess.check_call(['./one-env/onenv', 'wait'])
             environment_ready = True
         except subprocess.CalledProcessError as e:
-            retries =- 1
+            retries -= 1
             time.sleep(5)
             print(f'Waiting for one-env environment setup...')
 
