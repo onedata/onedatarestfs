@@ -115,8 +115,8 @@ def wait_for_support_sync(onezone_ip, oneprovider_krakow_ip,
 
     while True:
         try:
-            krakow_client.get_provider_for_space('test_onedatarestfs')
-            paris_client.get_provider_for_space('test_onedatarestfs')
+            krakow_client.get_file_id('test_onedatarestfs', '')
+            paris_client.get_file_id('test_onedatarestfs', '')
             time.sleep(1)
         except:
             if retry_count == 0:

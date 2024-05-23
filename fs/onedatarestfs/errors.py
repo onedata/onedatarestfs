@@ -12,7 +12,8 @@ from typing import Mapping, Optional, Type
 
 import fs.errors as fs_errors
 
-from onedatafilerestclient import OnedataRESTError  # type: ignore
+from onedatafilerestclient.errors import (OnedataError, OnedataRESTError,
+                                          SpaceNotFoundError)
 
 POSIX_TO_PYFS_ERROR_MAP: Mapping[str, Type[fs_errors.FSError]] = {
     "e2big": fs_errors.FSError,
@@ -98,40 +99,48 @@ POSIX_TO_PYFS_ERROR_MAP: Mapping[str, Type[fs_errors.FSError]] = {
 }
 
 
-def to_fserror(e: OnedataRESTError,
+def to_fserror(ex: OnedataError,
                msg: Optional[str] = None,
                request: Optional[str] = None) -> fs_errors.FSError:
-    """Return PyFilesystem exception based on a OnedataRESTError instance."""
+    """Return PyFilesystem exception based on a OnedataError instance."""
     if msg is None:
-        msg = e.description
+        msg = str(ex)
 
-        if e.error_category:
-            msg = f'[{e.error_category}] {msg}'
-
-        if e.error_details:
-            msg = f'{msg} ({e.error_details})'
-
-    if e.http_code == 404:
+    if isinstance(ex, OnedataRESTError):
+        return rest_error_to_fserror(ex, msg, request)
+    elif isinstance(ex, SpaceNotFoundError):
         return fs_errors.ResourceNotFound(msg)
 
-    if e.http_code == 416:
+    return fs_errors.FSError(msg)
+
+
+def rest_error_to_fserror(ex: OnedataRESTError,
+                          msg: Optional[str] = None,
+                          request: Optional[str] = None) -> fs_errors.FSError:
+    """Return PyFilesystem exception based on a OnedataRESTError instance."""
+    if msg is None:
+        msg = str(ex)
+
+    if ex.http_code == 404:
+        return fs_errors.ResourceNotFound(msg)
+
+    if ex.http_code == 416:
         return fs_errors.FSError("Invalid range")
 
-    if e.http_code == 400:
-        if e.error_category and e.error_category == 'posix':
-            error_class = POSIX_TO_PYFS_ERROR_MAP.get(e.error_details['errno'],
-                                                      fs_errors.FSError)
+    if ex.http_code == 400:
+        if ex.category == 'posix':
+            errno = ex.details['errno']  # type: ignore
 
-            if e.error_details['errno'] == 'enotdir' \
-                    and request == 'get_attributes':
+            error_class = POSIX_TO_PYFS_ERROR_MAP.get(errno, fs_errors.FSError)
+            if errno == 'enotdir' and request == 'get_attributes':
                 error_class = fs_errors.ResourceNotFound
 
             return error_class(msg)
 
-        if e.error_category and e.error_category == 'badValueFilePath':
+        if ex.category == 'badValueFilePath':
             return fs_errors.InvalidCharsInPath(msg)
 
-    if e.http_code == 500:
+    if ex.http_code == 500:
         return fs_errors.FSError(msg)
 
     return fs_errors.FSError(msg)
