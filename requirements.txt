@@ -1,2 +1,2 @@
 fs
-onedatafilerestclient==21.02.4.rc1
+onedatafilerestclient==21.2.5.1
