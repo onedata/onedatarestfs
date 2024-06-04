@@ -11,7 +11,7 @@ __license__ = (
 __all__ = ["OnedataRESTFS"]
 
 import io
-import math
+import sys
 import time
 from typing import (Any, Collection, Final, Iterator, List, Mapping, Optional,
                     Sized, Text, Tuple, cast)
@@ -44,6 +44,8 @@ FILE_INFO_ATTRS: Final[List[BasicFileAttrKey]] = [
 
 REST_LIST_LIMIT: Final[int] = 1000
 
+# Dummy attributes returned when scanning user root directory for spaces having
+# no supporting providers (there are no real attributes whatsoever)
 DUMMY_SPACE_SIZE: Final[int] = 0
 DUMMY_SPACE_UID: Final[int] = 0
 DUMMY_SPACE_GID: Final[int] = 0
@@ -535,12 +537,15 @@ class OnedataRESTFS(FS):
         """
         self.check()
 
-        start: Optional[int]
-        end: Optional[float]
+        (start, end) = page or (None, None)
+        start = start or 0
+        end = sys.maxsize if end is None else end
 
-        (start, end) = page if page is not None else (None, None)
-        start = 0 if start is None else start
-        end = math.inf if end is None else end
+        if start < 0 or end < 0:
+            raise ValueError(
+                "Indices for scandir() must be None or an integer: "
+                "0 <= x <= sys.maxsize.")
+
         if end <= start:
             return
 
@@ -555,11 +560,10 @@ class OnedataRESTFS(FS):
         except OnedataError as e:
             raise to_fserror(e, path)
 
-    def _scan_user_root_dir(self, start: int, end: float) -> Iterator[Info]:
+    def _scan_user_root_dir(self, start: int, end: int) -> Iterator[Info]:
         user_spaces = self._client.list_spaces()
-        slice_end = None if math.isinf(end) else int(end)
 
-        for space_specifier in user_spaces[start:slice_end]:
+        for space_specifier in user_spaces[start:end]:
             try:
                 space_attrs = self._client.get_attributes(
                     space_specifier, attributes=FILE_INFO_ATTRS)
@@ -587,12 +591,11 @@ class OnedataRESTFS(FS):
         }
         return cast(FileAttrsJson, space_attrs)
 
-    def _scan_dir(self, dir_path: str, start: int,
-                  end: float) -> Iterator[Info]:
+    def _scan_dir(self, dir_path: str, start: int, end: int) -> Iterator[Info]:
         (space_name, dir_rel_path) = self._split_space_path(dir_path)
         dir_id = self._client.get_file_id(space_name, file_path=dir_rel_path)
 
-        is_finished, token = self._get_scan_dir_continuation_token(
+        is_finished, token = self._seek_position_in_file_list(
             space_name, dir_id, start)
         if is_finished:
             return
@@ -615,9 +618,8 @@ class OnedataRESTFS(FS):
 
             token = res['nextPageToken']
 
-    def _get_scan_dir_continuation_token(
-            self, space_name: str, dir_id: str,
-            start: int) -> Tuple[bool, Optional[str]]:
+    def _seek_position_in_file_list(self, space_name: str, dir_id: str,
+                                    start: int) -> Tuple[bool, Optional[str]]:
         token = None
         skip_count = start
         while skip_count > 0:
@@ -723,7 +725,9 @@ class OnedataRESTFS(FS):
         if dir_path is None:
             raise fs.errors.PermissionDenied
 
-        self._client.create_file(space_name, file_path=dir_path, file_type='REG')
+        self._client.create_file(space_name,
+                                 file_path=dir_path,
+                                 file_type='REG')
 
         return True
 
@@ -788,7 +792,8 @@ class OnedataRESTFS(FS):
                 self._client.create_file(space_name, file_path=file_path)
 
             if file_id is None:
-                file_id = self._client.get_file_id(space_name, file_path=file_path)
+                file_id = self._client.get_file_id(space_name,
+                                                   file_path=file_path)
         except OnedataError as e:
             raise to_fserror(e, path, 'get_attributes')
 
