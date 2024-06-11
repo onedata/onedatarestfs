@@ -8,12 +8,18 @@ __copyright__ = "Copyright (C) 2023 Onedata"
 __license__ = (
     "This software is released under the MIT license cited in LICENSE.txt")
 
-from typing import Mapping, Optional, Type
+from typing import Final, Mapping, Optional, Type
 
 import fs.errors as fs_errors
 
 from onedatafilerestclient.errors import (OnedataError, OnedataRESTError,
                                           SpaceNotFoundError)
+
+_PERMISSION_DENIED_MSG: Final[str] = (
+    "Insufficient permissions to perform this operation. Possible causes "
+    "include: the file/directory's POSIX permissions or ACL rules forbid "
+    "this operation, the file/directory is write-protected, you don't have "
+    "enough privileges in the space, you are using a limited access token")
 
 POSIX_TO_PYFS_ERROR_MAP: Mapping[str, Type[fs_errors.FSError]] = {
     "e2big": fs_errors.FSError,
@@ -100,47 +106,53 @@ POSIX_TO_PYFS_ERROR_MAP: Mapping[str, Type[fs_errors.FSError]] = {
 
 
 def to_fserror(ex: OnedataError,
-               msg: Optional[str] = None,
+               *,
+               path: str,
                request: Optional[str] = None) -> fs_errors.FSError:
     """Return PyFilesystem exception based on a OnedataError instance."""
-    if msg is None:
-        msg = str(ex)
-
     if isinstance(ex, OnedataRESTError):
-        return rest_error_to_fserror(ex, msg, request)
-    elif isinstance(ex, SpaceNotFoundError):
-        return fs_errors.ResourceNotFound(msg)
+        return rest_error_to_fserror(ex, path=path, request=request)
 
-    return fs_errors.FSError(msg)
+    msg = str(ex)
+
+    if isinstance(ex, SpaceNotFoundError):
+        return fs_errors.ResourceNotFound(path=path, msg=msg)
+
+    return fs_errors.FSError(msg=msg)
 
 
 def rest_error_to_fserror(ex: OnedataRESTError,
-                          msg: Optional[str] = None,
+                          *,
+                          path: str,
                           request: Optional[str] = None) -> fs_errors.FSError:
     """Return PyFilesystem exception based on a OnedataRESTError instance."""
-    if msg is None:
-        msg = str(ex)
-
     if ex.http_code == 404:
-        return fs_errors.ResourceNotFound(msg)
+        return fs_errors.ResourceNotFound(path=path)
 
     if ex.http_code == 416:
-        return fs_errors.FSError("Invalid range")
+        return fs_errors.FSError(msg="Invalid range")
 
     if ex.http_code == 400:
         if ex.category == 'posix':
             errno = ex.details['errno']  # type: ignore
 
-            error_class = POSIX_TO_PYFS_ERROR_MAP.get(errno, fs_errors.FSError)
             if errno == 'enotdir' and request == 'get_attributes':
-                error_class = fs_errors.ResourceNotFound
+                return fs_errors.ResourceNotFound(path=path)
 
-            return error_class(msg)
+            error_class = POSIX_TO_PYFS_ERROR_MAP.get(errno, fs_errors.FSError)
+
+            if error_class is fs_errors.PermissionDenied:
+                return fs_errors.PermissionDenied(path=path,
+                                                  msg=_PERMISSION_DENIED_MSG)
+
+            return error_class(path)
 
         if ex.category == 'badValueFilePath':
-            return fs_errors.InvalidCharsInPath(msg)
+            return fs_errors.InvalidCharsInPath(path=path)
+
+    msg = str(ex)
 
     if ex.http_code == 500:
-        return fs_errors.FSError(msg)
+        return fs_errors.FSError(msg=msg)
 
-    return fs_errors.FSError(msg)
+    return fs_errors.FSError(msg=msg)

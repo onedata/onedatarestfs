@@ -64,11 +64,12 @@ class OnedataRESTFile(io.RawIOBase):
     mode: fs.mode.Mode
 
     def __init__(self, odfs: OnedataRESTFS, space_name: str, file_id: str,
-                 mode: fs.mode.Mode):
+                 file_path: str, mode: fs.mode.Mode):
         """Create instace of OnedataRESTFile handle."""
         super(OnedataRESTFile, self).__init__()
         self._odfs = odfs
         self._file_id = file_id
+        self._file_path = file_path
         self._space_name = space_name
         self.mode = mode
 
@@ -119,7 +120,7 @@ class OnedataRESTFile(io.RawIOBase):
 
             return cast(bytes, data)
         except OnedataError as e:
-            raise to_fserror(e, self._file_id)
+            raise to_fserror(e, path=self._file_path)
 
     def readinto(self, buf: bytearray) -> int:  # type: ignore
         """
@@ -404,9 +405,9 @@ class OnedataRESTFS(FS):
             file_attrs = self._client.get_attributes(
                 space_name, attributes=FILE_INFO_ATTRS, file_path=file_path)
         except OnedataRESTError as e:
-            raise to_fserror(e, path, 'get_attributes')
+            raise to_fserror(e, path=path, request='get_attributes')
         except OnedataError as e:
-            raise to_fserror(e)
+            raise to_fserror(e, path=path)
 
         if 'name' not in file_attrs:
             raise ResourceNotFound(path)
@@ -507,7 +508,7 @@ class OnedataRESTFS(FS):
 
             return result
         except OnedataError as e:
-            raise to_fserror(e, path)
+            raise to_fserror(e, path=path)
 
     def scandir(
         self,
@@ -558,7 +559,7 @@ class OnedataRESTFS(FS):
 
                 yield from self._scan_dir(path, start, end)
         except OnedataError as e:
-            raise to_fserror(e, path)
+            raise to_fserror(e, path=path)
 
     def _scan_user_root_dir(self, start: int, end: int) -> Iterator[Info]:
         user_spaces = self._client.list_spaces()
@@ -570,7 +571,9 @@ class OnedataRESTFS(FS):
             except NoAvailableProviderForSpaceError:
                 space_attrs = self._get_space_dummy_attrs(space_specifier)
             except OnedataError as e:
-                raise to_fserror(e, space_specifier, 'get_attributes')
+                raise to_fserror(e,
+                                 path=f'/{space_specifier}',
+                                 request='get_attributes')
 
             space_attrs['name'] = space_specifier
             yield self._build_file_info(space_attrs)
@@ -689,7 +692,7 @@ class OnedataRESTFS(FS):
                                          create_parents=recreate,
                                          mode=mode)
             except OnedataError as e:
-                raise to_fserror(e, path)
+                raise to_fserror(e, path=path)
 
         return self.opendir(path)
 
@@ -795,9 +798,13 @@ class OnedataRESTFS(FS):
                 file_id = self._client.get_file_id(space_name,
                                                    file_path=file_path)
         except OnedataError as e:
-            raise to_fserror(e, path, 'get_attributes')
+            raise to_fserror(e, path=path, request='get_attributes')
 
-        return OnedataRESTFile(self, space_name, file_id, Mode(mode))
+        return OnedataRESTFile(self,
+                               space_name=space_name,
+                               file_id=file_id,
+                               file_path=path,
+                               mode=Mode(mode))
 
     def remove(self, path: str) -> None:
         """Remove a file from the filesystem.

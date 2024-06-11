@@ -13,7 +13,7 @@ init: venv submodules
 		pip install -r requirements-dev.txt
 
 format:
-		python3 -m yapf -i setup.py fs tests
+		python3 -m yapf -i setup.py fs tests --recursive
 
 flake8:
 		python3 -m tox -e flake8
