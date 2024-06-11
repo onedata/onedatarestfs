@@ -48,6 +48,6 @@ class TestOnedataRESTFS(FSTestCases, unittest.TestCase):
         return restfs
 
     def _delete_contents(self):
-        res = self._client.readdir(self.space_name, '')
+        res = self._client.list_children(self.space_name, file_path='')
         for child in res['children']:
-            self._client.remove(self.space_name, child['name'])
+            self._client.remove(self.space_name, file_path=child['name'])
