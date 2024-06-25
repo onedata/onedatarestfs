@@ -304,7 +304,9 @@ class OnedataRESTFS(FS):
                  space: Optional[str] = None,
                  preferred_oneproviders: Optional[List[str]] = None,
                  verify_ssl: bool = True,
-                 timeout: int = 30):
+                 timeout: int = 30,
+                 *,
+                 alt_space_fqn_separators: Optional[List[str]] = None):
         """
         Onedata client OnedataRESTFS constructor.
 
@@ -327,10 +329,12 @@ class OnedataRESTFS(FS):
         self._space = space
         self._timeout = timeout
         self._preferred_oneproviders = preferred_oneproviders or []
-        self._client = OnedataFileRESTClient(self._onezone_host,
-                                             self._token,
-                                             self._preferred_oneproviders,
-                                             verify_ssl=verify_ssl)
+        self._client = OnedataFileRESTClient(
+            self._onezone_host,
+            self._token,
+            self._preferred_oneproviders,
+            alt_space_fqn_separators=alt_space_fqn_separators,
+            verify_ssl=verify_ssl)
 
         super(OnedataRESTFS, self).__init__()
 
