@@ -39,8 +39,8 @@ odfs = OnedataRESTFS(onedata_onezone_host, onedata_access_token)
 Or with a FS URL:
 
 ```python
-  from fs import open_fs
-  odfs = open_fs('onedatarestfs://HOST?token=...')
+from fs import open_fs
+odfs = open_fs('onedatarestfs://HOST?token=...')
 ```
 
 
