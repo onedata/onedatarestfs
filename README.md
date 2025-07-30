@@ -1,8 +1,8 @@
 # OnedataRESTFS
 
-`OnedataRESTFS` is a pure Python library that exposes the [Onedata REST API](https://onedata.org/#/home/api) through the [PyFilesystem2](https://www.pyfilesystem.org/) interface, requiring only a minimal set of dependencies.
+`OnedataRESTFS` is a pure Python library that exposes the Onedata [Oneprovider REST API](https://onedata.org/#/home/api/stable/oneprovider) through the [PyFilesystem2](https://www.pyfilesystem.org/) interface, requiring only a minimal set of dependencies.
 
-As a `PyFilesystem2` implementation, `OnedataRESTFS` allows you to work with the [Onedata](https://onedata.org/#/home/api) virtual filesystem in the same way as with any other supported filesystem.
+As a `PyFilesystem2` implementation, `OnedataRESTFS` allows you to work with the [Onedata](https://onedata.org) virtual filesystem in the same way as with any other supported filesystem.
 
 Supported Onezone versions: `>= 21.02.5`.
 
@@ -24,7 +24,7 @@ You can install `OnedataRESTFS` from PyPI as follows:
 pip install fs.onedatarestfs
 ```
 
-Make sure to install a version **not newer** than the Onedata Onezone service in your deployment.
+> Make sure to install a version **not newer** than the Onedata Onezone service in your deployment. New versions of this library are published only when some changes are made or a new major Onedata release is published, so there might not be an exact version matching current Onedata release.
 
 ## Usage
 
@@ -104,5 +104,5 @@ tox -c tox.ini -e fstest
 - [PyFilesystem2](https://github.com/PyFilesystem/pyfilesystem2)
 - [PyFilesystem2 Docs](https://pyfilesystem2.readthedocs.io/en/latest/)
 - [Onedata Homepage](https://onedata.org)
-- [Onedata REST API](https://onedata.org/#/home/api)
+- [Oneprovider REST API](https://onedata.org/#/home/api/stable/oneprovider)
 - [Onedata access tokens](https://onedata.org/#/home/documentation/21.02/user-guide/tokens[gui-guide].html)
