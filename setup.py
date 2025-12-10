@@ -3,7 +3,7 @@
 
 from setuptools import setup
 
-__version__ = '21.2.5.2'
+__version__ = '21.2.9.1'
 
 CLASSIFIERS = [
     "Development Status :: 4 - Beta",
@@ -11,11 +11,11 @@ CLASSIFIERS = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: System :: Filesystems",
 ]
 
