@@ -37,7 +37,6 @@ setup(
     long_description_content_type="text/markdown",
     packages=["fs.onedatarestfs"],
     keywords=["pyfilesystem", "Onedata"],
-    test_suite="nose.collector",
     url="https://github.com/onedata/onedatarestfs",
     version=__version__,
     entry_points={
