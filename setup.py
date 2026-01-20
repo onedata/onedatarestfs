@@ -3,7 +3,7 @@
 
 from setuptools import setup
 
-__version__ = '21.2.9.1'
+__version__ = "21.2.9.1"
 
 CLASSIFIERS = [
     "Development Status :: 4 - Beta",
@@ -19,7 +19,7 @@ CLASSIFIERS = [
     "Topic :: System :: Filesystems",
 ]
 
-with open("README.md", "rt") as f:
+with open("README.md", "rt", encoding="utf-8") as f:
     DESCRIPTION = f.read()
 
 REQUIREMENTS = ["fs", "onedatafilerestclient"]
@@ -30,17 +30,17 @@ setup(
     author_email="bkryza@gmail.com",
     classifiers=CLASSIFIERS,
     description="Onedata REST-based filesystem for PyFilesystem",
+    python_requires=">=3.10",
     install_requires=REQUIREMENTS,
     license="MIT",
     long_description=DESCRIPTION,
-    long_description_content_type='text/markdown',
+    long_description_content_type="text/markdown",
     packages=["fs.onedatarestfs"],
     keywords=["pyfilesystem", "Onedata"],
     test_suite="nose.collector",
     url="https://github.com/onedata/onedatarestfs",
     version=__version__,
     entry_points={
-        "fs.opener":
-        ["onedatarestfs = fs.onedatarestfs.opener:OnedataRESTFSOpener"]
+        "fs.opener": ["onedatarestfs = fs.onedatarestfs.opener:OnedataRESTFSOpener"]
     },
 )

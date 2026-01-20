@@ -19,17 +19,16 @@ def random_int(lower_bound=1, upper_bound=100):
     return random.randint(lower_bound, upper_bound)
 
 
-def random_str(
-        size=random_int(), characters=string.ascii_uppercase + string.digits):
+def random_str(size=random_int(), characters=string.ascii_uppercase + string.digits):
     """Generate random string of specified width."""
-    return ''.join(random.choice(characters) for _ in range(size))
+    return "".join(random.choice(characters) for _ in range(size))
 
 
 def random_path(size=random_int(3, 10)):
     """Generate random file system path."""
-    return '/'.join(random_str(5) for _ in range(size))
+    return "/".join(random_str(5) for _ in range(size))
 
 
 def random_bytes(size=random_int()):
     """Generate random sequence of bytes."""
-    return random_str(size).encode('utf-8')
+    return random_str(size).encode("utf-8")

@@ -1,5 +1,25 @@
 .PHONY: submodules venv init format flake8 yapf mypy link dist pypi_check pypi_upload
 
+STATIC_ANALYSER_IMAGE := "docker.onedata.org/python_static_analyser:v9"
+SRC_FILES := setup.py fs tests
+
+UID := $(shell id -u)
+GID := $(shell id -g)
+
+define docker_run
+	docker run --rm -i -v $(CURDIR):$(CURDIR) -w $(CURDIR) -u $(UID):$(GID) $(STATIC_ANALYSER_IMAGE) $1
+endef
+
+bold := $(shell tput bold)
+normal := $(shell tput sgr0)
+blue := $(shell tput setaf 4)
+
+# Function to print target name
+define print_target
+	@echo ""
+	@echo "$(blue)$(bold)$@:$(normal)"
+endef
+
 submodules:
 		git submodule sync --recursive ${submodule}
 		git submodule update --init --recursive ${submodule}
@@ -10,22 +30,39 @@ venv:
 		if [ "x${VIRTUAL_ENV}" == "x" ]; then . venv/bin/activate; fi
 
 init: venv submodules
+        $(call print_target)
 		pip install -r requirements-dev.txt
 
+##
+## Formatting
+##
+
 format:
-		python3 -m yapf -i setup.py fs tests --recursive
+	$(call print_target)
+	$(call docker_run, isort -rc $(SRC_FILES))
+	$(call docker_run, black --fast $(SRC_FILES))
 
-flake8:
-		python3 -m tox -e flake8
+##
+## Linting
+##
+define run_python_command
+	./ct_run.py --verbose --image $(STATIC_ANALYSER_IMAGE) --no-clean --python-args $1
+endef
 
-yapf:
-		python3 -m tox -e yapf
+black-check:
+	$(call print_target)
+	$(call docker_run, black $(SRC_FILES) --check) || (echo "Code failed Black format checking. Please run 'make format' before commiting your changes."; exit 1)
 
-mypy:
-		python3 -m tox -e mypy
+static-analysis:
+	$(call print_target)
+	$(call run_python_command, "-m pylint $(SRC_FILES) --rcfile=.pylintrc --recursive=y")
 
-lint: flake8 yapf mypy
-		@:
+type-check:
+	$(call print_target)
+	$(call run_python_command, "-m tox -e mypy")
+
+lint: black-check static-analysis type-check
+	@:
 
 test:
 		python3 -m tox -e test

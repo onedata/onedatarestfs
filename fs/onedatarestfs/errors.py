@@ -5,21 +5,24 @@ from __future__ import annotations
 
 __author__ = "Bartek Kryza"
 __copyright__ = "Copyright (C) 2023 Onedata"
-__license__ = (
-    "This software is released under the MIT license cited in LICENSE.txt")
+__license__ = "This software is released under the MIT license cited in LICENSE.txt"
 
 from typing import Final, Mapping, Optional, Type
 
 import fs.errors as fs_errors
 
-from onedatafilerestclient.errors import (OnedataError, OnedataRESTError,
-                                          SpaceNotFoundError)
+from onedatafilerestclient.errors import (
+    OnedataError,
+    OnedataRESTError,
+    SpaceNotFoundError,
+)
 
 _PERMISSION_DENIED_MSG: Final[str] = (
     "Insufficient permissions to perform this operation. Possible causes "
     "include: the file/directory's POSIX permissions or ACL rules forbid "
     "this operation, the file/directory is write-protected, you don't have "
-    "enough privileges in the space, you are using a limited access token")
+    "enough privileges in the space, you are using a limited access token"
+)
 
 POSIX_TO_PYFS_ERROR_MAP: Mapping[str, Type[fs_errors.FSError]] = {
     "e2big": fs_errors.FSError,
@@ -101,14 +104,13 @@ POSIX_TO_PYFS_ERROR_MAP: Mapping[str, Type[fs_errors.FSError]] = {
     "etimedout": fs_errors.OperationTimeout,
     "etxtbsy": fs_errors.FSError,
     "ewouldblock": fs_errors.OperationFailed,
-    "exdev": fs_errors.FSError
+    "exdev": fs_errors.FSError,
 }
 
 
-def to_fserror(ex: OnedataError,
-               *,
-               path: str,
-               request: Optional[str] = None) -> fs_errors.FSError:
+def to_fserror(
+    ex: OnedataError, *, path: str, request: Optional[str] = None
+) -> fs_errors.FSError:
     """Return PyFilesystem exception based on a OnedataError instance."""
     if isinstance(ex, OnedataRESTError):
         return rest_error_to_fserror(ex, path=path, request=request)
@@ -121,38 +123,39 @@ def to_fserror(ex: OnedataError,
     return fs_errors.FSError(msg=msg)
 
 
-def rest_error_to_fserror(ex: OnedataRESTError,
-                          *,
-                          path: str,
-                          request: Optional[str] = None) -> fs_errors.FSError:
+def rest_error_to_fserror(
+    ex: OnedataRESTError, *, path: str, request: Optional[str] = None
+) -> fs_errors.FSError:
     """Return PyFilesystem exception based on a OnedataRESTError instance."""
-    if ex.http_code == 404:
-        return fs_errors.ResourceNotFound(path=path)
-
-    if ex.http_code == 416:
-        return fs_errors.FSError(msg="Invalid range")
-
-    if ex.http_code == 400:
-        if ex.category == 'posix':
-            errno = ex.details['errno']  # type: ignore
-
-            if errno == 'enotdir' and request == 'get_attributes':
-                return fs_errors.ResourceNotFound(path=path)
-
-            error_class = POSIX_TO_PYFS_ERROR_MAP.get(errno, fs_errors.FSError)
-
-            if error_class is fs_errors.PermissionDenied:
-                return fs_errors.PermissionDenied(path=path,
-                                                  msg=_PERMISSION_DENIED_MSG)
-
-            return error_class(path)
-
-        if ex.category == 'badValueFilePath':
-            return fs_errors.InvalidCharsInPath(path=path)
-
     msg = str(ex)
+    error: fs_errors.FSError
 
-    if ex.http_code == 500:
-        return fs_errors.FSError(msg=msg)
+    # Handle specific HTTP status codes
+    if ex.http_code == 404:
+        error = fs_errors.ResourceNotFound(path=path)
+    elif ex.http_code == 416:
+        error = fs_errors.FSError(msg="Invalid range")
+    elif ex.http_code == 400:
+        if ex.category == "posix":
+            errno = ex.details["errno"]  # type: ignore
 
-    return fs_errors.FSError(msg=msg)
+            if errno == "enotdir" and request == "get_attributes":
+                error = fs_errors.ResourceNotFound(path=path)
+            else:
+                error_class = POSIX_TO_PYFS_ERROR_MAP.get(errno, fs_errors.FSError)
+
+                if error_class is fs_errors.PermissionDenied:
+                    error = fs_errors.PermissionDenied(
+                        path=path, msg=_PERMISSION_DENIED_MSG
+                    )
+                else:
+                    error = error_class(path)
+        elif ex.category == "badValueFilePath":
+            error = fs_errors.InvalidCharsInPath(path=path)
+        else:
+            error = fs_errors.FSError(msg=msg)
+    else:
+        # Default for all other cases (including 500 and any other status codes)
+        error = fs_errors.FSError(msg=msg)
+
+    return error
