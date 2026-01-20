@@ -14,7 +14,7 @@ import io
 import sys
 import time
 from typing import (Any, Collection, Final, Iterator, List, Mapping, Optional,
-                    Sized, Text, Tuple, cast)
+                    Sized, Text, Tuple, Union, cast)
 
 import fs.errors
 from fs.base import FS
@@ -304,9 +304,11 @@ class OnedataRESTFS(FS):
                  space: Optional[str] = None,
                  preferred_oneproviders: Optional[List[str]] = None,
                  verify_ssl: bool = True,
-                 timeout: int = 30,
+                 timeout: Optional[Union[int, Tuple[int, int]]] = 30,
                  *,
-                 alt_space_fqn_separators: Optional[List[str]] = None):
+                 alt_space_fqn_separators: Optional[List[str]] = None,
+                 disable_graylisting: bool = False,
+                 ):
         """
         Onedata client OnedataRESTFS constructor.
 
@@ -334,7 +336,9 @@ class OnedataRESTFS(FS):
             self._token,
             self._preferred_oneproviders,
             alt_space_fqn_separators=alt_space_fqn_separators,
-            verify_ssl=verify_ssl)
+            verify_ssl=verify_ssl,
+            timeout=timeout,
+            disable_graylisting=disable_graylisting)
 
         super(OnedataRESTFS, self).__init__()
 
