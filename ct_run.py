@@ -146,7 +146,7 @@ if {shed_privileges}:
     os.setregid({gid}, {gid})
     os.setreuid({uid}, {uid})
 
-tests = 'flake8,yapf,mypy,tests'
+tests = 'tests'
 if '{suites}':
     tests = '{suites}'
     

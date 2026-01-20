@@ -1,7 +1,7 @@
-.PHONY: submodules venv init format flake8 yapf mypy link dist pypi_check pypi_upload
+.PHONY: submodules venv init format flake8 yapf mypy lint test-with-clean test-without-clean dist pypi_check pypi_upload
 
 STATIC_ANALYSER_IMAGE := "docker.onedata.org/python_static_analyser:v9"
-SRC_FILES := setup.py fs tests
+SRC_FILES := setup.py fs/ tests/
 
 UID := $(shell id -u)
 GID := $(shell id -g)
@@ -81,16 +81,29 @@ test-without-clean:
 	$(call print_target)
 	$(call run_tests, --no-clean --suite tests)
 
+##
+## Release
+##
 
-test:
-		python3 -m tox -e test
+PYPI_PACKAGE_NAME := fs.onedatarestfs
 
 dist:
-		python3 -m build
+	$(call print_target)
+	python3 -m build
 
 pypi_check: dist
-		python3 -m twine check dist/*
+	$(call print_target)
+	python3 -m twine check dist/*
 
 pypi_upload: pypi_check
-		python3 -m twine upload --verbose dist/*
+	$(call print_target)
+	python3 -m twine upload --verbose dist/*
 
+assert_uploaded:
+	$(call print_target)
+	@VERSION=$$(grep "__version__ =" setup.py | sed -E 's/__version__ = "([^\"]+)"/\1/'); \
+	echo "Parsed version: $$VERSION"; \
+	SANITIZED_VERSION=$$($(call docker_run, python3 -c "from packaging.version import Version; print(Version('$$VERSION'))")); \
+	echo "Sanitized version: $$SANITIZED_VERSION"; \
+	$(call docker_run, python3 -m pip install $(PYPI_PACKAGE_NAME)==$$SANITIZED_VERSION) --break-system-packages --dry-run || \
+	(echo "Version $$SANITIZED_VERSION of package $(PYPI_PACKAGE_NAME) is NOT available on PyPI."; exit 1)
