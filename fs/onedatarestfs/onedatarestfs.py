@@ -335,15 +335,16 @@ class OnedataRESTFS(FS):
         "virtual": False,
     }
 
+    # pylint: disable=R0917
     def __init__(
         self,
         onezone_host: str,
         token: str,
         space: Optional[str] = None,
-        *,
         preferred_oneproviders: Optional[List[str]] = None,
         verify_ssl: bool = True,
         timeout: Optional[Union[int, Tuple[int, int]]] = 30,
+        *,
         alt_space_fqn_separators: Optional[List[str]] = None,
         disable_graylisting: bool = False,
     ):
@@ -426,9 +427,7 @@ class OnedataRESTFS(FS):
 
         return str(path_tokens[0]), "/".join(path_tokens[1:])
 
-    def getinfo(
-        self, path: str, _namespaces: Optional[Collection[Text]] = None
-    ) -> Info:
+    def getinfo(self, path: str, namespaces: Optional[Collection[Text]] = None) -> Info:
         """Get information about a resource on a filesystem.
 
         Arguments:
@@ -560,7 +559,7 @@ class OnedataRESTFS(FS):
     def scandir(
         self,
         path: str,
-        _namespaces: Optional[Collection[Text]] = None,
+        namespaces: Optional[Collection[Text]] = None,
         page: Optional[Tuple[Optional[int], Optional[int]]] = None,
     ) -> Iterator[Info]:
         """Get an iterator of resource info.
@@ -964,7 +963,7 @@ class OnedataRESTFS(FS):
         src_path: str,
         dst_path: str,
         overwrite: bool = False,
-        _preserve_time: bool = False,
+        preserve_time: bool = False,
     ) -> None:
         """Move a file from ``src_path`` to ``dst_path``.
 

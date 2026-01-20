@@ -32,6 +32,10 @@ if "pytest" in sys.modules:
 @pytest.mark.usefixtures("onezone_ip", "onezone_admin_token")
 class TestOnedataRESTFS(FSTestCases, unittest.TestCase):
     space_name = "test_onedatarestfs"
+    
+    def assertRaisesRegexp(self, *args, **kwargs):
+        """Compatibility method for deprecated assertRaisesRegexp."""
+        return self.assertRaisesRegex(*args, **kwargs)
 
     def make_fs(self):
         # Return an instance of your FS object here

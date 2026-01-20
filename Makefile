@@ -64,6 +64,24 @@ type-check:
 lint: black-check static-analysis type-check
 	@:
 
+
+##
+## Testing
+##
+
+define run_tests
+	./ct_run.py --verbose --image $(STATIC_ANALYSER_IMAGE) --onenv-config tests/test_env_config.yaml -s -x --junitxml=onedatafilerestclient-tests-results.xml $1
+endef
+
+test-with-clean:
+	$(call print_target)
+	$(call run_tests, --suite tests)
+
+test-without-clean:
+	$(call print_target)
+	$(call run_tests, --no-clean --suite tests)
+
+
 test:
 		python3 -m tox -e test
 
