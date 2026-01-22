@@ -59,7 +59,8 @@ static-analysis:
 
 type-check:
 	$(call print_target)
-	$(call run_python_command, "-m tox -e mypy")
+	$(call run_python_command, "-m mypy --strict --disallow-untyped-defs --show-error-context --non-interactive --install-types \
+        fs/onedatarestfs/onedatarestfs.py fs/onedatarestfs/errors.py")
 
 lint: black-check static-analysis type-check
 	@:
