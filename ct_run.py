@@ -135,7 +135,7 @@ venv_dir = "/tmp/venv"
 builder = venv.EnvBuilder(with_pip=True)
 builder.create(venv_dir)
 python_exec = os.path.join(venv_dir, "bin", "python")
-subprocess.run([python_exec, "-m", "pip", "install", "--upgrade", "pip"], check=True)
+subprocess.run([python_exec, "-m", "pip", "install", "--upgrade", "pip", "setuptools"], check=True)
 subprocess.run([python_exec, "-m", "pip", "install", "-r", "./requirements-dev.txt"], check=True)
 
 if {shed_privileges}:
