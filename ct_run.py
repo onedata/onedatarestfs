@@ -163,7 +163,7 @@ command = command.format(
     gid=os.getegid(),
     shed_privileges=(platform.system() == 'Linux') and not args.no_shed_privileges,
     suites=','.join(args.suites),
-    python_args=args.python_args if args.python_args else  '-m tox -c tox.ini -e tests',
+    python_args=args.python_args,
     script_dir=script_dir,
     release=args.release)
 

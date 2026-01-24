@@ -59,7 +59,7 @@ static-analysis:
 
 type-check:
 	$(call print_target)
-	$(call run_python_command, "-m mypy --strict --disallow-untyped-defs --show-error-context --non-interactive --install-types \
+	$(call run_python_command, "-m mypy --strict --disallow-untyped-defs --show-error-context \
         fs/onedatarestfs/onedatarestfs.py fs/onedatarestfs/errors.py")
 
 lint: black-check static-analysis type-check
@@ -71,16 +71,16 @@ lint: black-check static-analysis type-check
 ##
 
 define run_tests
-	./ct_run.py --verbose --image $(STATIC_ANALYSER_IMAGE) --onenv-config tests/test_env_config.yaml -s -x --junitxml=onedatafilerestclient-tests-results.xml $1
+	./ct_run.py --no-clean --verbose --image $(STATIC_ANALYSER_IMAGE) --onenv-config tests/test_env_config.yaml -s -x --cov=fs.onedatarestfs --junitxml=onedatafilerestclient-tests-results.xml --python-args $1
 endef
 
 test-with-clean:
 	$(call print_target)
-	$(call run_tests, --suite tests)
+	$(call run_tests, "-m pytest tests")
 
 test-without-clean:
 	$(call print_target)
-	$(call run_tests, --no-clean --suite tests)
+	$(call run_tests, "-m pytest tests")
 
 ##
 ## Release
