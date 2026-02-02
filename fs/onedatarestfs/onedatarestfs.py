@@ -77,6 +77,8 @@ DUMMY_SPACE_UID: Final[int] = 0
 DUMMY_SPACE_GID: Final[int] = 0
 DUMMY_SPACE_MODE: Final[str] = "775"
 
+# pylint: disable=W0613
+
 
 class OnedataRESTFile(io.RawIOBase):
     """OnedataRESTFS file handle implementation.
