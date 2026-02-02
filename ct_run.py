@@ -149,7 +149,7 @@ if {shed_privileges}:
 tests = 'tests'
 if '{suites}':
     tests = '{suites}'
-    
+
 command = [python_exec] + "{python_args}".split(' ')
 
 print('Executing command in venv: ' + str(command))

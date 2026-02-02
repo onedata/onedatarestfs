@@ -71,20 +71,20 @@ lint: black-check static-analysis type-check
 ##
 
 define run_tests
-	./ct_run.py --verbose --image $(STATIC_ANALYSER_IMAGE) --onenv-config tests/test_env_config.yaml -s -x --cov=fs.onedatarestfs --junitxml=onedatafilerestclient-tests-results.xml --python-args $1
+	./ct_run.py --verbose --image $(STATIC_ANALYSER_IMAGE) --onenv-config tests/test_env_config.yaml --python-args $1
 endef
 
 define run_tests_no_clean
-	./ct_run.py --no-clean --verbose --image $(STATIC_ANALYSER_IMAGE) --onenv-config tests/test_env_config.yaml -s -x --cov=fs.onedatarestfs --junitxml=onedatafilerestclient-tests-results.xml --python-args $1
+	./ct_run.py --no-clean --verbose --image $(STATIC_ANALYSER_IMAGE) --onenv-config tests/test_env_config.yaml --python-args $1
 endef
 
 test-with-clean:
 	$(call print_target)
-	$(call run_tests, "-m pytest tests")
+	$(call run_tests, "-m pytest -s -x --cov=fs/onedatarestfs --junitxml=onedatarestfs-tests-results.xml tests")
 
 test-without-clean:
 	$(call print_target)
-	$(call run_tests_no_clean, "-m pytest tests")
+	$(call run_tests_no_clean, "-m pytest -s -x --cov=fs/onedatarestfs --junitxml=onedatarestfs-tests-results.xml tests")
 
 ##
 ## Release
