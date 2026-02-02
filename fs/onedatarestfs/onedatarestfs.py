@@ -47,7 +47,6 @@ from fs.mode import Mode
 from fs.path import basename, dirname
 from fs.permissions import Permissions
 from fs.subfs import SubFS
-
 from onedatafilerestclient import OnedataFileRESTClient
 from onedatafilerestclient.errors import (
     NoAvailableProviderForSpaceError,

@@ -1,5 +1,5 @@
 ./onedatafilerestclient
-fs
+fs>=2.4.0
 tox
 flake8
 yapf

@@ -10,7 +10,6 @@ __license__ = "This software is released under the MIT license cited in LICENSE.
 from typing import Final, Mapping, Optional, Type
 
 import fs.errors as fs_errors
-
 from onedatafilerestclient.errors import (
     OnedataError,
     OnedataRESTError,

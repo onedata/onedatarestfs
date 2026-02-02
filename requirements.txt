@@ -1,2 +1,2 @@
-fs
+fs>=2.4.0
 onedatafilerestclient==21.2.9.1

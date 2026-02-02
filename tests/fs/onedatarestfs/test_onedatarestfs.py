@@ -10,18 +10,40 @@ import sys
 import unittest
 
 import pytest
+
+# Import PyFilesystem2's test module by temporarily removing local fs from path
+original_path = sys.path[:]
+for path in sys.path[:]:
+    if path.endswith("onedatarestfs") or "onedatarestfs" in path:
+        sys.path.remove(path)
+
 from fs.test import FSTestCases
 
+# Restore original path
+sys.path[:] = original_path
+
+# Now import the local onedatarestfs module
 try:
+    # Try the installed package first
     from fs.onedatarestfs import OnedataRESTFS
 except ModuleNotFoundError:
-    # This is necessary for running unit tests directly without installing
-    sys.path.extend(["../.."])
-    from onedatarestfs import OnedataRESTFS
-except ImportError:
-    # This is necessary for running unit tests directly without installing
-    sys.path.extend(["../../fs"])
-    from onedatarestfs import OnedataRESTFS
+    # Fall back to local module import
+    try:
+        # Add project root to path for local fs package
+        import os
+
+        project_root = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "../../..")
+        )
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+        from fs.onedatarestfs import OnedataRESTFS
+    except (ImportError, ModuleNotFoundError):
+        # Last resort - try old-style import
+        sys.path.insert(
+            0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../fs"))
+        )
+        from onedatarestfs import OnedataRESTFS
 
 if "pytest" in sys.modules:
     import urllib3
