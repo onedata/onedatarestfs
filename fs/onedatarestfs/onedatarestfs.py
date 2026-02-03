@@ -23,7 +23,6 @@ from typing import (
     Optional,
     Text,
     Tuple,
-    Union,
     cast,
 )
 
@@ -54,6 +53,7 @@ from onedatafilerestclient.errors import (
     OnedataRESTError,
 )
 from onedatafilerestclient.file_attributes import BasicFileAttrKey, FileAttrsJson
+from onedatafilerestclient.types import HTTPTimeout
 
 from .errors import to_fserror
 
@@ -344,7 +344,7 @@ class OnedataRESTFS(FS):
         space: Optional[str] = None,
         preferred_oneproviders: Optional[List[str]] = None,
         verify_ssl: bool = True,
-        timeout: Optional[Union[int, Tuple[int, int]]] = 30,
+        timeout: Optional[HTTPTimeout] = 30,
         *,
         alt_space_fqn_separators: Optional[List[str]] = None,
         disable_graylisting: bool = False,

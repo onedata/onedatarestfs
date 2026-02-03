@@ -3,7 +3,7 @@
 
 from setuptools import setup
 
-__version__ = "21.2.9.1"
+__version__ = "25.0.0"
 
 CLASSIFIERS = [
     "Development Status :: 4 - Beta",
@@ -22,7 +22,7 @@ CLASSIFIERS = [
 with open("README.md", "rt", encoding="utf-8") as f:
     DESCRIPTION = f.read()
 
-REQUIREMENTS = ["fs", "onedatafilerestclient"]
+REQUIREMENTS = ["fs", "onedatafilerestclient>=25.0.0"]
 
 setup(
     name="fs.onedatarestfs",
