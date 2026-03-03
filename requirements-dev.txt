@@ -13,3 +13,4 @@ typing-extensions>=4.3.0
 packaging
 pylint==4.0.2
 types-six
+setuptools<82.0.0
