@@ -1,7 +1,17 @@
 #!/usr/bin/env python
 """OnedataRESTFS is a PyFilesystem implementation for Onedata."""
 
+import sys
+import setuptools
 from setuptools import setup
+
+_setuptools_ver = tuple(int(x) for x in setuptools.__version__.split(".")[:2])
+if _setuptools_ver >= (81, 0):
+    sys.exit(
+        f"ERROR: setuptools {setuptools.__version__} is not supported. "
+        "The pyfilesystem2 dependency requires setuptools<81.0.0. "
+        "Please downgrade first: pip install 'setuptools<81.0.0'"
+    )
 
 __version__ = "25.0.0"
 
