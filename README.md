@@ -26,7 +26,7 @@ pip install fs.onedatarestfs
 
 > Make sure to install a version **not newer** than the Onedata Onezone service in your deployment. New versions of this library are published only when some changes are made or a new major Onedata release is published, so there might not be an exact version matching current Onedata release.
 
-> Due dependence on PyFilesystem2 library, which requires `setuptools` to be older than version 81, the installation will fail if the available `setuptools` version is equal or higher than 81.
+> **_NOTE:_** The PyFilesystem2 library depends on a version of setuptools older than 81.0.0. If you have a newer version installed, the OnedataRestFS installation will fail. In that case, first downgrade setuptools: `pip install 'setuptools<81.0.0'`.
 
 ## Usage
 
