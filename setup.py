@@ -2,6 +2,7 @@
 """OnedataRESTFS is a PyFilesystem implementation for Onedata."""
 
 import sys
+
 import setuptools
 from setuptools import setup
 
@@ -13,7 +14,7 @@ if _setuptools_ver >= (81, 0):
         "Please downgrade first: pip install 'setuptools<81.0.0'"
     )
 
-__version__ = '25.1.0'
+__version__ = "25.1.0"
 
 CLASSIFIERS = [
     "Development Status :: 4 - Beta",
