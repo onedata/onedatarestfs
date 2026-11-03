@@ -14,7 +14,7 @@ if _setuptools_ver >= (81, 0):
         "Please downgrade first: pip install 'setuptools<81.0.0'"
     )
 
-__version__ = "25.1.0"
+__version__ = "25.2.0"
 
 CLASSIFIERS = [
     "Development Status :: 4 - Beta",
@@ -33,7 +33,7 @@ CLASSIFIERS = [
 with open("README.md", "rt", encoding="utf-8") as f:
     DESCRIPTION = f.read()
 
-REQUIREMENTS = ["fs", "onedatafilerestclient>=25.1.0"]
+REQUIREMENTS = ["fs", "onedatafilerestclient>=25.2.0"]
 
 setup(
     name="fs.onedatarestfs",
