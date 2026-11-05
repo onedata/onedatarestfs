@@ -1,0 +1,16 @@
+./onedatafilerestclient
+fs>=2.4.0
+tox
+flake8
+yapf
+isort
+mypy
+pytest==8.4.2
+pytest-cov
+six
+pyyaml==6.0.3
+typing-extensions>=4.3.0
+packaging
+pylint==4.0.2
+types-six
+setuptools<82.0.0
